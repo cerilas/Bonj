@@ -641,7 +641,7 @@ export function CafeExperience({
           <span>GAZİANTEP / TÜRKİYE</span>
           <p>San Sebastian · Cheesecake · Coffee</p>
         </div>
-        <a href="#top">Başa dön ↑</a>
+        <a href="#top">Başa dön <UiIcon name="arrow-up" /></a>
       </footer>
     </main>
   );
