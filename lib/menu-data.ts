@@ -13,8 +13,11 @@ import {
 
 const allowedCategories = new Set<MenuCategory>([
   "signature",
+  "tatli",
   "kahvalti",
+  "bowl",
   "kahve",
+  "soguk-kahve",
   "ferah",
 ]);
 

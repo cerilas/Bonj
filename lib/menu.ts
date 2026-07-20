@@ -1,4 +1,11 @@
-export type MenuCategory = "signature" | "kahvalti" | "kahve" | "ferah";
+export type MenuCategory =
+  | "signature"
+  | "tatli"
+  | "kahvalti"
+  | "bowl"
+  | "kahve"
+  | "soguk-kahve"
+  | "ferah";
 
 export type MenuItem = {
   id?: number;
@@ -22,10 +29,13 @@ export const categoryLabels: Array<{
   label: string;
 }> = [
   { id: "all", label: "Hepsi" },
-  { id: "signature", label: "İmza Tatlılar" },
-  { id: "kahvalti", label: "Bonj Brunch" },
-  { id: "kahve", label: "Yeni Nesil Kahve" },
-  { id: "ferah", label: "Ferah" },
+  { id: "signature", label: "Cheesecake & İmza" },
+  { id: "tatli", label: "Tatlı & Fırın" },
+  { id: "kahvalti", label: "Brunch & Kruvasan" },
+  { id: "bowl", label: "Bowl & Hafif" },
+  { id: "kahve", label: "Sıcak Kahveler" },
+  { id: "soguk-kahve", label: "Soğuk Kahveler" },
+  { id: "ferah", label: "Soğuk İçecekler" },
 ];
 
 export const menuItems: MenuItem[] = [
@@ -82,7 +92,7 @@ export const menuItems: MenuItem[] = [
     name: "Iced Latte",
     description:
       "Yoğun espresso, soğuk süt ve her yudumda pürüzsüz bitiş.",
-    category: "kahve",
+    category: "soguk-kahve",
     categoryName: "Soğuk Kahve",
     accent: "cream",
   },
