@@ -2015,10 +2015,10 @@ button {
   .infinite-menu-heading h2 em { margin-left: .06em; }
   .infinite-menu-heading > p { max-width: 92%; justify-self: start; }
   .infinite-menu-frame {
-    width: 100%;
-    height: min(166vw, 680px);
+    width: calc(100% - 48px);
+    height: min(150vw, 640px);
     margin-top: 38px;
-    border-inline: 0;
+    border-inline: 1px solid rgba(255, 255, 255, .13);
     border-radius: 34% 34% 0 0 / 8% 8% 0 0;
   }
 

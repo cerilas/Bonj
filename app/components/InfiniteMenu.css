@@ -14,7 +14,7 @@
   overflow: hidden;
   outline: none;
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 #infinite-grid-menu-canvas:active { cursor: grabbing; }

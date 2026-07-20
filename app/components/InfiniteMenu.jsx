@@ -472,7 +472,7 @@ class ArcballControl {
     canvas.addEventListener('pointerleave', this.handlePointerEnd);
     canvas.addEventListener('pointermove', this.handlePointerMove);
 
-    canvas.style.touchAction = 'pan-y';
+    canvas.style.touchAction = 'none';
   }
 
   destroy() {
