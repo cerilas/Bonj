@@ -2331,3 +2331,66 @@
   .admin-order-print > footer { display: flex; justify-content: space-between; gap: 5mm; margin-top: 6mm; font-size: 2mm; }
   .admin-order-print > footer small { font-size: inherit; }
 }
+
+/* Keep the brand and account anchored while a growing menu scrolls independently. */
+.admin-sidebar {
+  overflow: hidden;
+}
+
+.admin-brand,
+.admin-account {
+  flex: 0 0 auto;
+}
+
+.admin-sidebar nav {
+  min-height: 0;
+  flex: 1 1 auto;
+  align-content: start;
+  grid-auto-rows: max-content;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.admin-sidebar nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar nav::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.admin-sidebar nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-account {
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .admin-sidebar nav {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding: 0 2px 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .admin-sidebar nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-sidebar nav a,
+  .admin-sidebar nav button {
+    flex: 0 0 54px;
+    scroll-snap-align: center;
+  }
+}

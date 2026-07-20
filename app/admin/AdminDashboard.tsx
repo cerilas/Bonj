@@ -1078,9 +1078,9 @@ export function AdminDashboard({
           <button className={activeView === "catering" ? "is-current" : ""} type="button" onClick={() => changeAdminView("catering")}><i>06</i><span>Catering</span></button>
           <button className={activeView === "users" ? "is-current" : ""} type="button" onClick={() => changeAdminView("users")}><i>07</i><span>Kullanıcılar</span></button>
           <button className={activeView === "notifications" ? "is-current" : ""} type="button" onClick={() => changeAdminView("notifications")}><i>08</i><span>Bildirim Ayarları</span></button>
-          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>09</i><span>API Dokümantasyonu</span></button>
-          <button type="button" onClick={() => setQrOpen(true)}><i>10</i><span>QR Menü</span></button>
-          <a href="/menu" target="_blank"><i>11</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
+          <button type="button" onClick={() => setQrOpen(true)}><i>09</i><span>QR Menü</span></button>
+          <a href="/menu" target="_blank"><i>10</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
+          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>11</i><span>API Dokümantasyonu</span></button>
         </nav>
         <div className="admin-account">
           <span>{adminName.slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
