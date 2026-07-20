@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/use-cart";
 import { BrandLogo } from "../components/BrandLogo";
+import { UiIcon } from "../components/UiIcon";
 
 type Fulfillment = "table" | "pickup";
 
@@ -74,10 +75,10 @@ export function CartExperience() {
       <main className="cart-page cart-completed-page">
         <header className="cart-header">
           <Link className="cart-brand" href="/" aria-label="Bonj Cake Story ana sayfa"><BrandLogo className="cart-header-logo" alt="" /></Link>
-          <Link href="/menu">Menüye dön ↗</Link>
+          <Link href="/menu">Menüye dön <UiIcon name="arrow-up-right" /></Link>
         </header>
         <section className="cart-success">
-          <div className="cart-success-orbit" aria-hidden="true"><i /><i /><span>✓</span></div>
+          <div className="cart-success-orbit" aria-hidden="true"><i /><i /><span><UiIcon name="check" /></span></div>
           <span className="cart-kicker">SİPARİŞİN BİZDE</span>
           <h1>Tamamdır,<br /><em>hazırlıyoruz.</em></h1>
           <p>Ödeme almıyoruz. Siparişin Bonj ekibine iletildi; seçtiğin teslim biçimine göre seni bekliyor olacağız.</p>
@@ -85,7 +86,7 @@ export function CartExperience() {
             <span>Sipariş kodu<strong>{completed.orderNumber}</strong></span>
             <span>Toplam<strong>{money(completed.total)}</strong></span>
           </div>
-          <Link className="cart-primary-link" href="/menu">Menüye dön <span>↗</span></Link>
+          <Link className="cart-primary-link" href="/menu">Menüye dön <span><UiIcon name="arrow-up-right" /></span></Link>
         </section>
       </main>
     );
@@ -95,7 +96,7 @@ export function CartExperience() {
     <main className="cart-page">
       <header className="cart-header">
         <Link className="cart-brand" href="/" aria-label="Bonj Cake Story ana sayfa"><BrandLogo className="cart-header-logo" alt="" /></Link>
-        <div><span>SEPET / {count.toString().padStart(2, "0")}</span><Link href="/menu">Menüye dön ↗</Link></div>
+        <div><span>SEPET / {count.toString().padStart(2, "0")}</span><Link href="/menu">Menüye dön <UiIcon name="arrow-up-right" /></Link></div>
       </header>
 
       <section className="cart-intro">
@@ -110,7 +111,7 @@ export function CartExperience() {
           <span>0</span>
           <h2>Sepetin<br /><em>henüz boş.</em></h2>
           <p>Cheesecake, kahve ya da güzel bir brunch… Menüden canının çektiğini ekle.</p>
-          <Link className="cart-primary-link" href="/menu">Menüyü aç <span>↗</span></Link>
+          <Link className="cart-primary-link" href="/menu">Menüyü aç <span><UiIcon name="arrow-up-right" /></span></Link>
         </section>
       ) : (
         <div className="cart-layout">
@@ -130,7 +131,7 @@ export function CartExperience() {
                 <div className="cart-quantity" aria-label={`${item.name} adedi`}>
                   <button type="button" onClick={() => setQuantity(item.menuItemId, item.quantity - 1)} aria-label="Bir azalt">−</button>
                   <strong>{item.quantity}</strong>
-                  <button type="button" onClick={() => setQuantity(item.menuItemId, item.quantity + 1)} disabled={item.quantity >= 20} aria-label="Bir artır">＋</button>
+                  <button type="button" onClick={() => setQuantity(item.menuItemId, item.quantity + 1)} disabled={item.quantity >= 20} aria-label="Bir artır"><UiIcon name="plus" /></button>
                 </div>
                 <strong className="cart-line-total">{money(item.priceInKurus * item.quantity)}</strong>
               </article>
@@ -144,10 +145,10 @@ export function CartExperience() {
             <fieldset className="cart-fulfillment">
               <legend>Nasıl teslim alacaksın?</legend>
               <button className={fulfillment === "table" ? "is-selected" : ""} type="button" onClick={() => setFulfillment("table")} aria-pressed={fulfillment === "table"}>
-                <small>01</small><strong>BONJ’dayım</strong><span>Masa numaram belli</span><i>✓</i>
+                <small>01</small><strong>BONJ’dayım</strong><span>Masa numaram belli</span><i><UiIcon name="check" /></i>
               </button>
               <button className={fulfillment === "pickup" ? "is-selected" : ""} type="button" onClick={() => setFulfillment("pickup")} aria-pressed={fulfillment === "pickup"}>
-                <small>02</small><strong>BONJ’a geliyorum</strong><span>Şu saatte hazır olsun</span><i>✓</i>
+                <small>02</small><strong>BONJ’a geliyorum</strong><span>Şu saatte hazır olsun</span><i><UiIcon name="check" /></i>
               </button>
             </fieldset>
 
@@ -180,7 +181,7 @@ export function CartExperience() {
             {error && <p className="cart-error" role="alert">{error}</p>}
             <button className="cart-submit" type="submit" disabled={sending}>
               <span>{sending ? "Sipariş iletiliyor…" : "Siparişi tamamla"}<small>{money(totalInKurus)}</small></span>
-              <i>↗</i>
+              <i><UiIcon name="arrow-up-right" /></i>
             </button>
           </form>
         </div>

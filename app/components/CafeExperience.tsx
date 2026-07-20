@@ -7,6 +7,7 @@ import { useCart } from "@/lib/use-cart";
 import { BrandLogo } from "./BrandLogo";
 import { InstagramIcon } from "./InstagramIcon";
 import InfiniteMenu from "./InfiniteMenu";
+import { UiIcon } from "./UiIcon";
 
 type Filter = "all" | MenuCategory;
 
@@ -233,7 +234,7 @@ export function CafeExperience({
           <a href="#mekan" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>04 — Mekân</a>
           <a href="/iletisim" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>05 — İletişim</a>
           <a href="/sepet" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>06 — Sepet ({count})</a>
-          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>07 — Instagram ↗</a>
+          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>07 — Instagram <UiIcon name="arrow-up-right" /></a>
         </nav>
         <p>Gaziantep’in tatlı frekansı.</p>
       </div>
@@ -273,13 +274,13 @@ export function CafeExperience({
             <span>yeni bir boyut.</span>
           </h1>
           <p>
-            Yanık yüzey, akışkan merkez, güçlü kahve. Bonj’da her katman
+            Karamelize yüzey, akışkan merkez, güçlü kahve. Bonj’da her katman
             merak uyandırmak için tasarlandı.
           </p>
           <div className="hero-actions">
             <a className="button button-primary" href="#menu">
               Menüye dal
-              <span aria-hidden="true">↘</span>
+              <span aria-hidden="true"><UiIcon name="arrow-down-right" /></span>
             </a>
             <a
               className="button button-ghost"
@@ -288,7 +289,7 @@ export function CafeExperience({
               rel="noreferrer"
             >
               Yolunu bul
-              <span aria-hidden="true">↗</span>
+              <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
             </a>
           </div>
           </div>
@@ -317,10 +318,10 @@ export function CafeExperience({
 
       <div className="flavor-marquee" aria-hidden="true">
         <div>
-          <span>YANIK</span><i>●</i><span>AKIŞKAN</span><i>●</i>
-          <span>DEMLENMİŞ</span><i>●</i><span>TAZE</span><i>●</i>
-          <span>YANIK</span><i>●</i><span>AKIŞKAN</span><i>●</i>
-          <span>DEMLENMİŞ</span><i>●</i><span>TAZE</span><i>●</i>
+          <span>KADİFEMSİ</span><i>●</i><span>KREMSİ</span><i>●</i>
+          <span>RAFİNE</span><i>●</i><span>TAZE</span><i>●</i>
+          <span>KADİFEMSİ</span><i>●</i><span>KREMSİ</span><i>●</i>
+          <span>RAFİNE</span><i>●</i><span>TAZE</span><i>●</i>
         </div>
       </div>
 
@@ -390,7 +391,7 @@ export function CafeExperience({
                     </div>
                     <h3>{item.name}</h3>
                     <p>{item.description}</p>
-                    <span className="card-arrow" aria-hidden="true">↗</span>
+                    <span className="card-arrow" aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
                   </div>
                 </button>
               </TiltCard>
@@ -402,7 +403,7 @@ export function CafeExperience({
                   aria-label={`${item.name} ürününü sepete ekle`}
                 >
                   <span>{cartQuantity(item) ? "Bir tane daha ekle" : "Sepete ekle"}</span>
-                  <strong>{cartQuantity(item) || "＋"}</strong>
+                  <strong>{cartQuantity(item) || <UiIcon name="plus" />}</strong>
                 </button>
               )}
             </article>
@@ -430,7 +431,7 @@ export function CafeExperience({
               onClick={() => setSelectedItem(null)}
               aria-label="Ürün detayını kapat"
             >
-              ×
+              <UiIcon name="close" />
             </button>
             <div className={`menu-detail-visual accent-${selectedItem.accent}`}>
               {selectedItem.imageUrl ? (
@@ -465,7 +466,7 @@ export function CafeExperience({
                     onClick={() => addMenuItem(selectedItem)}
                   >
                     <span>{cartQuantity(selectedItem) ? "Bir tane daha ekle" : "Sepete ekle"}</span>
-                    <strong>{cartQuantity(selectedItem) || "＋"}</strong>
+                    <strong>{cartQuantity(selectedItem) || <UiIcon name="plus" />}</strong>
                   </button>
                 </div>
               )}
@@ -477,7 +478,7 @@ export function CafeExperience({
       {count > 0 && (
         <a className="home-cart-float" href="/sepet" aria-label={`Sepete git, ${count} ürün`}>
           <span><strong>{count}</strong> ürün</span>
-          <span>Sepeti gör · {formatPrice(totalInKurus)} <i>→</i></span>
+          <span>Sepeti gör · {formatPrice(totalInKurus)} <i><UiIcon name="arrow-right" /></i></span>
         </a>
       )}
 
@@ -597,7 +598,7 @@ export function CafeExperience({
           <article data-reveal>
             <span>01</span>
             <h3>Katmanı kır</h3>
-            <p>Yanık yüzeyin altındaki ipeksi dokuyu keşfet.</p>
+            <p>Karamelize yüzeyin altındaki ipeksi dokuyu keşfet.</p>
           </article>
           <article data-reveal>
             <span>02</span>
@@ -627,7 +628,7 @@ export function CafeExperience({
             target="_blank"
             rel="noreferrer"
           >
-            Haritada aç <span aria-hidden="true">↗</span>
+            Haritada aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </a>
         </div>
       </section>

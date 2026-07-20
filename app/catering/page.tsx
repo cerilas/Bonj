@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CateringForm } from "./CateringForm";
+import { UiIcon } from "../components/UiIcon";
 import "./catering.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function CateringPage() {
             <article><strong>02</strong><span>Bonj seni arasın</span></article>
             <article><strong>03</strong><span>Teklifin netleşsin</span></article>
           </div>
-          <Link href="/menu">Menüyü incele <span>↗</span></Link>
+          <Link href="/menu">Menüyü incele <span><UiIcon name="arrow-up-right" /></span></Link>
         </div>
 
         <div className="catering-form-shell">

@@ -53,6 +53,36 @@ async function responseBody(response: Response) {
   return response.text().catch(() => "");
 }
 
+function providerErrorDetail(value: unknown): { message: string; code: string } | null {
+  if (typeof value === "string" && value.trim()) {
+    return { message: value.trim().replace(/\s+/g, " ").slice(0, 240), code: "" };
+  }
+  if (!value || typeof value !== "object") return null;
+
+  const body = value as JsonRecord;
+  const rawMessage = body.error ?? body.message ?? body.errorMessage ?? body.detail;
+  const rawCode = body.code ?? body.errorCode ?? body.statusCode;
+  if (typeof rawMessage === "string" && rawMessage.trim()) {
+    return {
+      message: rawMessage.trim().replace(/\s+/g, " ").slice(0, 240),
+      code: rawCode === undefined || rawCode === null ? "" : String(rawCode).slice(0, 40),
+    };
+  }
+  return providerErrorDetail(body.data);
+}
+
+function smsProviderError(status: number, body: unknown) {
+  const detail = providerErrorDetail(body);
+  const code = detail?.code ? `, kod ${detail.code}` : "";
+  const reason = detail?.message ? `: ${detail.message}` : "";
+  console.error("[cerilas-sms] Sağlayıcı isteği reddetti.", {
+    status,
+    code: detail?.code || null,
+    message: detail?.message || null,
+  });
+  return new Error(`SMS gönderilemedi${reason} (HTTP ${status}${code}).`);
+}
+
 async function requestToken(signal?: AbortSignal) {
   const { baseUrl, email, password } = smsConfig();
   const response = await fetch(`${baseUrl}/api/auth/login`, {
@@ -134,7 +164,7 @@ export async function sendCerilasSms({ message, phone }: SendSmsInput): Promise<
     }
     const body = await responseBody(response);
     if (!response.ok) {
-      throw new Error(`SMS gönderilemedi (${response.status}).`);
+      throw smsProviderError(response.status, body);
     }
     return { ok: true, providerResponse: body };
   } catch (error) {

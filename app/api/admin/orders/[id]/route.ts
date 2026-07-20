@@ -31,3 +31,27 @@ export async function PATCH(
   if (!updated.length) return NextResponse.json({ error: "Sipariş bulunamadı." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  if (!(await getCurrentAdmin())) {
+    return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
+  }
+  const { id } = await context.params;
+  const orderId = Number(id);
+  if (!Number.isInteger(orderId) || orderId < 1) {
+    return NextResponse.json({ error: "Sipariş bulunamadı." }, { status: 404 });
+  }
+
+  const db = getDb();
+  const deleted = await db
+    .delete(orders)
+    .where(eq(orders.id, orderId))
+    .returning({ id: orders.id });
+  if (!deleted.length) {
+    return NextResponse.json({ error: "Sipariş bulunamadı." }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
+}

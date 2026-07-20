@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminAnalyticsData, AnalyticsPeriod } from "@/lib/admin-analytics";
+import { UiIcon } from "../components/UiIcon";
 
 const periodLabels: Record<AnalyticsPeriod, string> = {
   today: "Bugün",
@@ -210,7 +211,7 @@ export function AdminAnalyticsPanel() {
       {error && (
         <div className="admin-load-error" role="alert">
           <span><strong>İstatistikler yenilenemedi.</strong>{error}</span>
-          <button type="button" onClick={() => void changePeriod(period)}>Tekrar dene <i aria-hidden="true">↻</i></button>
+          <button type="button" onClick={() => void changePeriod(period)}>Tekrar dene <i aria-hidden="true"><UiIcon name="refresh" /></i></button>
         </div>
       )}
 

@@ -1339,7 +1339,7 @@
     width: 100%;
     height: 54px;
     display: grid;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-columns: repeat(11, minmax(0, 1fr));
     gap: 3px;
     margin: 0;
   }
@@ -1861,7 +1861,7 @@
 
 @media (max-width: 1320px) { .admin-catering-list-head, .admin-catering-row { grid-template-columns: 120px minmax(190px,1fr) 145px 32px; } .admin-catering-list-head span:nth-child(3), .admin-catering-person { display: none; } }
 @media (max-width: 720px) {
-  .admin-sidebar nav { grid-template-columns: repeat(10,minmax(0,1fr)); }
+  .admin-sidebar nav { grid-template-columns: repeat(11,minmax(0,1fr)); }
   .admin-catering-toolbar > p { display: none; }
   .admin-catering-toolbar .admin-status-filter { width: 100%; max-width: 100%; }
   .admin-catering-list-head { display: none; }
@@ -1885,6 +1885,167 @@
   .admin-catering-detail > footer { align-items: stretch; flex-direction: column; padding: 13px 18px; }
   .admin-catering-state-picker { width: 100%; }
   .admin-catering-detail-actions { justify-content: space-between; }
+}
+
+/* API documentation */
+.admin-api-docs { max-width: 1600px; }
+.admin-api-hero { min-height: 224px; display: flex; align-items: flex-end; justify-content: space-between; gap: 42px; border-bottom: 1px solid var(--admin-line); padding-bottom: 35px; }
+.admin-api-hero h1 { margin: 18px 0 0; color: var(--admin-ink); font-family: var(--serif); font-size: clamp(58px, 6.4vw, 92px); font-weight: 400; letter-spacing: -.065em; line-height: .78; }
+.admin-api-hero h1 em { color: var(--admin-accent); font-weight: 400; }
+.admin-api-hero > div:first-child > p { max-width: 610px; margin: 25px 0 0; color: var(--admin-muted); font-size: 10px; line-height: 1.7; }
+.admin-api-summary { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, minmax(95px, 1fr)); overflow: hidden; border: 1px solid var(--admin-line); border-radius: 14px; background: var(--admin-panel); }
+.admin-api-summary > span { min-height: 94px; display: grid; align-content: center; gap: 8px; border-right: 1px solid var(--admin-line); padding: 14px 22px; }
+.admin-api-summary > span:last-child { border-right: 0; }
+.admin-api-summary strong { color: var(--admin-ink); font-family: var(--serif); font-size: 34px; font-weight: 400; line-height: .85; }
+.admin-api-summary small { color: var(--admin-muted); font-size: 6px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+
+.admin-api-base { min-height: 72px; display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 15px; margin-top: 24px; border: 1px solid var(--admin-line); border-radius: 13px; background: var(--admin-panel-strong); padding: 10px 12px 10px 15px; }
+.admin-api-base > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: var(--admin-ink); color: var(--admin-panel); font-size: 23px; }
+.admin-api-base > div { min-width: 0; display: grid; gap: 7px; }
+.admin-api-base small { color: var(--admin-muted); font-size: 6px; font-weight: 900; letter-spacing: .15em; }
+.admin-api-base code { overflow: hidden; color: var(--admin-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-api-base button,
+.admin-api-code-head button { min-height: 38px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--admin-line-strong); border-radius: 8px; background: transparent; color: var(--admin-ink); padding: 0 13px; font-size: 7px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+.admin-api-base button:hover,
+.admin-api-code-head button:hover { border-color: var(--admin-ink); }
+.admin-api-base button.is-copied,
+.admin-api-code-head button.is-copied { border-color: rgba(111,140,59,.45); background: rgba(111,140,59,.1); color: #617d31; }
+
+.admin-api-security { min-height: 76px; display: grid; grid-template-columns: 38px minmax(0,1fr); align-items: start; gap: 14px; margin-top: 12px; border: 1px solid rgba(169,25,64,.2); border-radius: 13px; background: rgba(169,25,64,.055); padding: 16px 18px; }
+.admin-api-security > span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-accent); color: #fff; font-size: 18px; }
+.admin-api-security > div { display: grid; gap: 7px; }
+.admin-api-security strong { color: var(--admin-ink); font-family: var(--serif); font-size: 16px; font-weight: 400; }
+.admin-api-security p { margin: 0; color: var(--admin-muted); font-size: 8px; line-height: 1.65; }
+.admin-api-security code { color: var(--admin-accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.admin-api-toolbar { min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 30px 0 22px; border: 1px solid var(--admin-line); border-radius: 13px; background: var(--admin-panel); padding: 10px 11px; }
+.admin-api-toolbar > label { min-width: 245px; flex: 1 1 330px; display: flex; align-items: center; gap: 10px; border-radius: 9px; background: rgba(24,18,21,.045); padding: 0 13px; }
+.admin-api-toolbar > label > span { color: var(--admin-muted); font-size: 20px; }
+.admin-api-toolbar input { width: 100%; min-height: 44px; border: 0; outline: 0; background: transparent; color: var(--admin-ink); font: inherit; font-size: 9px; }
+.admin-api-toolbar input::placeholder { color: var(--admin-muted); }
+.admin-api-toolbar > div { max-width: 68%; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.admin-api-toolbar > div::-webkit-scrollbar { display: none; }
+.admin-api-toolbar > div button { flex: 0 0 auto; min-height: 38px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--admin-muted); padding: 0 11px; font-size: 6px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+.admin-api-toolbar > div button:hover { color: var(--admin-ink); }
+.admin-api-toolbar > div button.is-active { border-color: var(--admin-ink); background: var(--admin-ink); color: var(--admin-panel); }
+
+.admin-api-content { min-width: 0; display: grid; grid-template-columns: 178px minmax(0,1fr); align-items: start; gap: 28px; }
+.admin-api-content > aside { position: sticky; top: 28px; display: grid; gap: 4px; border-left: 1px solid var(--admin-line); padding-left: 13px; }
+.admin-api-content > aside > span { margin-bottom: 9px; color: var(--admin-muted); font-size: 6px; font-weight: 900; letter-spacing: .14em; }
+.admin-api-content > aside a { min-height: 34px; display: flex; align-items: center; gap: 10px; border-radius: 7px; color: var(--admin-muted); padding: 0 8px; font-size: 7px; font-weight: 800; }
+.admin-api-content > aside a:hover { background: var(--admin-panel); color: var(--admin-ink); }
+.admin-api-content > aside i { color: var(--admin-accent); font-family: var(--serif); font-size: 13px; font-style: normal; }
+.admin-api-sections { min-width: 0; display: grid; gap: 50px; }
+.admin-api-section { min-width: 0; scroll-margin-top: 28px; }
+.admin-api-section > header { display: flex; align-items: center; gap: 15px; margin-bottom: 14px; }
+.admin-api-section > header > span { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-ink); color: var(--admin-panel); font-family: var(--serif); font-size: 18px; }
+.admin-api-section > header > div { display: grid; gap: 4px; }
+.admin-api-section h2 { margin: 0; color: var(--admin-ink); font-family: var(--serif); font-size: 30px; font-weight: 400; letter-spacing: -.035em; }
+.admin-api-section > header p { margin: 0; color: var(--admin-muted); font-size: 7px; }
+.admin-api-endpoints { min-width: 0; display: grid; gap: 7px; }
+
+.admin-api-endpoint { min-width: 0; overflow: hidden; border: 1px solid var(--admin-line); border-radius: 12px; background: var(--admin-panel-strong); }
+.admin-api-endpoint[open] { border-color: var(--admin-line-strong); box-shadow: 0 18px 48px rgba(24,18,21,.07); }
+.admin-api-endpoint > summary { min-width: 0; min-height: 76px; display: grid; grid-template-columns: 62px minmax(150px,.7fr) minmax(230px,1.25fr) auto 24px; align-items: center; gap: 14px; padding: 11px 15px; cursor: pointer; list-style: none; }
+.admin-api-endpoint > summary::-webkit-details-marker { display: none; }
+.admin-api-endpoint > summary:hover { background: rgba(24,18,21,.025); }
+.admin-api-method { min-width: 58px; display: inline-flex; justify-content: center; border-radius: 6px; padding: 7px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 7px; font-weight: 900; letter-spacing: .05em; }
+.method-get .admin-api-method { background: rgba(50,117,132,.12); color: #236d7d; }
+.method-post .admin-api-method { background: rgba(63,121,73,.13); color: #397746; }
+.method-put .admin-api-method { background: rgba(131,93,31,.13); color: #8b621d; }
+.method-patch .admin-api-method { background: rgba(137,75,128,.13); color: #8a477f; }
+.method-delete .admin-api-method { background: rgba(169,25,64,.12); color: var(--admin-accent); }
+.admin-api-endpoint > summary > code { min-width: 0; overflow: hidden; color: var(--admin-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.admin-api-endpoint > summary > div { min-width: 0; display: grid; gap: 6px; }
+.admin-api-endpoint > summary strong { color: var(--admin-ink); font-family: var(--serif); font-size: 17px; font-weight: 400; }
+.admin-api-endpoint > summary small { overflow: hidden; color: var(--admin-muted); font-size: 7px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.admin-api-auth { border: 1px solid var(--admin-line); border-radius: 100px; color: var(--admin-muted); padding: 7px 9px; font-size: 6px; font-weight: 900; white-space: nowrap; }
+.admin-api-auth.auth-public { border-color: rgba(63,121,73,.22); color: #397746; }
+.admin-api-auth.auth-cron,
+.admin-api-auth.auth-jwt { border-color: rgba(169,25,64,.24); color: var(--admin-accent); }
+.admin-api-endpoint > summary > i { color: var(--admin-muted); font-size: 17px; font-style: normal; text-align: center; transition: transform .22s ease; }
+.admin-api-endpoint[open] > summary > i { transform: rotate(45deg); }
+
+.admin-api-detail { display: grid; grid-template-columns: minmax(0,1fr) 290px; gap: 0; border-top: 1px solid var(--admin-line); }
+.admin-api-detail-main { min-width: 0; display: grid; gap: 25px; padding: 28px; }
+.admin-api-detail-main section { min-width: 0; }
+.admin-api-detail h3 { margin: 0 0 11px; color: var(--admin-muted); font-size: 6px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.admin-api-detail ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.admin-api-detail li { border: 1px solid var(--admin-line); border-radius: 7px; background: rgba(24,18,21,.025); padding: 8px 9px; }
+.admin-api-detail li code { color: var(--admin-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 7px; }
+.admin-api-detail pre { max-width: 100%; margin: 0; overflow: auto; border-radius: 10px; background: #171215; color: #f5eee4; padding: 19px; scrollbar-color: rgba(255,255,255,.28) transparent; }
+.admin-api-detail pre code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; line-height: 1.75; white-space: pre; }
+.admin-api-note { display: grid; grid-template-columns: 27px minmax(0,1fr); align-items: start; gap: 10px; margin: 0; border-left: 2px solid var(--admin-accent); background: rgba(169,25,64,.055); color: var(--admin-muted); padding: 12px 14px; font-size: 8px; line-height: 1.6; }
+.admin-api-note > span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-accent); color: #fff; font-weight: 900; }
+.admin-api-code-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 10px; }
+.admin-api-code-head h3 { margin: 0; }
+.admin-api-code-head button { min-height: 32px; }
+.admin-api-detail > aside { min-width: 0; border-left: 1px solid var(--admin-line); background: rgba(24,18,21,.025); padding: 28px 20px; }
+.admin-api-detail > aside > span { display: block; margin-bottom: 11px; color: var(--admin-muted); font-size: 6px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.admin-api-detail > aside pre { background: rgba(24,18,21,.075); color: var(--admin-ink); padding: 14px; }
+.admin-api-detail > aside pre code { font-size: 7px; line-height: 1.65; }
+.admin-api-detail > aside > p { margin: 0; color: var(--admin-muted); font-size: 8px; line-height: 1.7; }
+.admin-api-detail > aside > p code { color: var(--admin-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.admin-api-detail dl { display: grid; gap: 10px; margin: 24px 0 0; border-top: 1px solid var(--admin-line); padding-top: 18px; }
+.admin-api-detail dl > div { display: flex; justify-content: space-between; gap: 12px; }
+.admin-api-detail dt { color: var(--admin-muted); font-size: 6px; font-weight: 900; text-transform: uppercase; }
+.admin-api-detail dd { margin: 0; color: var(--admin-ink); font-size: 7px; font-weight: 800; text-align: right; }
+.admin-api-empty { min-height: 310px; display: grid; place-items: center; align-content: center; gap: 12px; border: 1px dashed var(--admin-line-strong); border-radius: 14px; color: var(--admin-muted); text-align: center; }
+.admin-api-empty > span { font-size: 38px; }
+.admin-api-empty strong { color: var(--admin-ink); font-family: var(--serif); font-size: 24px; font-weight: 400; }
+.admin-api-empty p { margin: 0; font-size: 8px; }
+
+@media (max-width: 1180px) {
+  .admin-api-hero { align-items: flex-start; flex-direction: column; }
+  .admin-api-summary { width: 100%; }
+  .admin-api-summary > span { min-height: 78px; }
+  .admin-api-content { grid-template-columns: 1fr; }
+  .admin-api-content > aside { position: static; display: flex; gap: 5px; overflow-x: auto; border-left: 0; padding: 0 0 3px; scrollbar-width: none; }
+  .admin-api-content > aside > span { display: none; }
+  .admin-api-content > aside a { flex: 0 0 auto; border: 1px solid var(--admin-line); background: var(--admin-panel); padding-inline: 11px; }
+  .admin-api-endpoint > summary { grid-template-columns: 62px minmax(145px,.65fr) minmax(190px,1fr) 24px; }
+  .admin-api-auth { display: none; }
+  .admin-api-detail { grid-template-columns: minmax(0,1fr) 240px; }
+}
+
+@media (max-width: 900px) {
+  .admin-api-toolbar { align-items: stretch; flex-direction: column; }
+  .admin-api-toolbar > label { min-width: 0; flex-basis: auto; }
+  .admin-api-toolbar > div { max-width: 100%; }
+  .admin-api-endpoint > summary { grid-template-columns: 60px minmax(0,1fr) 24px; gap: 11px; }
+  .admin-api-endpoint > summary > div { grid-column: 2; }
+  .admin-api-endpoint > summary > code { grid-column: 2; grid-row: 1; }
+  .admin-api-endpoint > summary > div { grid-row: 2; }
+  .admin-api-endpoint > summary > .admin-api-method { grid-row: 1 / span 2; }
+  .admin-api-endpoint > summary > i { grid-column: 3; grid-row: 1 / span 2; }
+  .admin-api-detail { grid-template-columns: 1fr; }
+  .admin-api-detail > aside { border-top: 1px solid var(--admin-line); border-left: 0; }
+}
+
+@media (max-width: 720px) {
+  .admin-api-docs { padding-top: 24px; }
+  .admin-api-hero { min-height: 0; gap: 28px; padding-bottom: 25px; }
+  .admin-api-hero h1 { font-size: clamp(58px, 21vw, 78px); }
+  .admin-api-hero > div:first-child > p { font-size: 9px; }
+  .admin-api-summary { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .admin-api-summary > span { min-height: 70px; padding: 12px; }
+  .admin-api-summary strong { font-size: 27px; }
+  .admin-api-base { grid-template-columns: 38px minmax(0,1fr); }
+  .admin-api-base > span { width: 38px; height: 38px; }
+  .admin-api-base > button { grid-column: 1 / -1; justify-content: center; }
+  .admin-api-security { grid-template-columns: 1fr; }
+  .admin-api-toolbar { margin-top: 20px; }
+  .admin-api-section > header > span { width: 40px; height: 40px; }
+  .admin-api-section h2 { font-size: 25px; }
+  .admin-api-endpoint > summary { min-height: 86px; grid-template-columns: 54px minmax(0,1fr) 19px; padding: 10px; }
+  .admin-api-method { min-width: 51px; padding-inline: 5px; }
+  .admin-api-endpoint > summary strong { font-size: 16px; }
+  .admin-api-endpoint > summary small { display: none; }
+  .admin-api-detail-main { gap: 21px; padding: 19px 13px; }
+  .admin-api-detail > aside { padding: 20px 13px; }
+  .admin-api-detail pre { padding: 14px 12px; }
+  .admin-api-detail pre code { font-size: 7px; }
+  .admin-api-code-head button { padding-inline: 9px; }
 }
 
 /* Analytics dashboard */
