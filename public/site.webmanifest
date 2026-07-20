@@ -1,0 +1,21 @@
+{
+  "name": "Bonj Cake Story",
+  "short_name": "Bonj",
+  "description": "Gaziantep’te cheesecake, brunch ve yeni nesil kahve deneyimi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2ecdf",
+  "theme_color": "#a91940",
+  "icons": [
+    {
+      "src": "/bonj-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/bonj-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

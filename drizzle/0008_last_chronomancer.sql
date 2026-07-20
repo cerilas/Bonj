@@ -1,0 +1,1 @@
+ALTER TABLE "admin_users" ADD COLUMN "name" varchar(120) DEFAULT 'Yönetici' NOT NULL;

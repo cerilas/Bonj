@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784408579282,
+      "tag": "0000_chemical_the_hand",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784469775660,
+      "tag": "0001_volatile_trish_tilby",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784495620795,
+      "tag": "0002_parallel_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784497014633,
+      "tag": "0003_spicy_ogun",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784499598783,
+      "tag": "0004_cute_mephistopheles",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784503814767,
+      "tag": "0005_complex_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784532067866,
+      "tag": "0006_luxuriant_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784534451410,
+      "tag": "0007_talented_leper_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784537358754,
+      "tag": "0008_last_chronomancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784538551995,
+      "tag": "0009_demonic_tattoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784542734985,
+      "tag": "0010_illegal_blindfold",
+      "breakpoints": true
+    }
+  ]
+}
