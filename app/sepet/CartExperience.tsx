@@ -187,8 +187,7 @@ export function CartExperience() {
                       minDate={pickupWindow.earliest.slice(0, 10)}
                       maxDate={pickupWindow.latestDate}
                       minTime={pickupMinTime}
-                      tone="dark"
-                      helperText="Mutfağın hazırlanması için en az 10 dakika ayırıyoruz."
+                      helperText="Hazırlık süresi nedeniyle en erken uygun saat gösterilir."
                       onDateChange={(value) => {
                         const earliestDate = pickupWindow.earliest.slice(0, 10);
                         const earliestTime = pickupWindow.earliest.slice(11, 16);
