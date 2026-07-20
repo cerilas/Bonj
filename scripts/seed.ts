@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   categories,
+  categoryImages,
   menuItems as menuItemsTable,
   productImages,
 } from "../db/schema";
@@ -13,24 +14,50 @@ async function main() {
 const db = getDb();
 
 const categoryRows = [
-  { slug: "signature", name: "İmza Tatlılar", description: "San Sebastian cheesecake'ler ve Bonj imzalı tatlılar.", sortOrder: 1 },
-  { slug: "kahvalti", name: "Bonj Brunch", description: "Zengin dolgularla hazırlanan kruvasanlar ve yeni nesil kahvaltılar.", sortOrder: 2 },
-  { slug: "kahve", name: "Yeni Nesil Kahve", description: "Klasiklerden üçüncü dalga reçetelere sıcak ve soğuk kahveler.", sortOrder: 3 },
-  { slug: "ferah", name: "Ferah", description: "Ev yapımı limonatalar ve ferahlatan soğuk içecekler.", sortOrder: 4 },
+  { slug: "signature", name: "Cheesecake & İmza", description: "San Sebastian yorumları ve Bonj imzalı cheesecake seçkisi.", imageAlt: "Bonj cheesecake ve imza tatlı seçkisi", imagePath: "public/images/menu/san-sebastian.webp", sortOrder: 1 },
+  { slug: "tatli", name: "Tatlı & Fırın", description: "Günlük fırından cookie, brownie ve modern pastane tatlıları.", imageAlt: "Brownie, cookie ve modern fırın tatlıları", imagePath: "public/images/menu/bonj-firin-tatlilari.webp", sortOrder: 2 },
+  { slug: "kahvalti", name: "Brunch & Kruvasan", description: "Zengin dolgulu kruvasanlar, sıcak tabaklar ve yeni nesil kahvaltılar.", imageAlt: "Bonj brunch ve zengin kahvaltı tabağı", imagePath: "public/images/menu/bonj-kahvalti-tabagi.webp", sortOrder: 3 },
+  { slug: "bowl", name: "Bowl & Hafif", description: "Meyveli, proteinli ve dengeli kahvaltı kâseleri.", imageAlt: "Meyve, granola ve açaí içeren kahvaltı bowl", imagePath: "public/images/menu/acai-bowl.webp", sortOrder: 4 },
+  { slug: "kahve", name: "Sıcak Kahveler", description: "Espresso klasiklerinden üçüncü dalga demlemelere sıcak kahveler.", imageAlt: "Latte artlı sıcak kahve seçkisi", imagePath: "public/images/menu/flat-white.webp", sortOrder: 5 },
+  { slug: "soguk-kahve", name: "Soğuk Kahveler", description: "Cold brew, iced latte ve yeni nesil buzlu kahve reçeteleri.", imageAlt: "Buzlu ve katmanlı soğuk kahve seçkisi", imagePath: "public/images/menu/iced-latte.webp", sortOrder: 6 },
+  { slug: "ferah", name: "Limonata & Soğuk İçecekler", description: "Ev yapımı limonatalar, cold tea ve gazlı imza içecekler.", imageAlt: "Meyveli ev yapımı limonata ve soğuk içecekler", imagePath: "public/images/menu/cilekli-limonata.webp", sortOrder: 7 },
 ];
 
 for (const category of categoryRows) {
   await db
     .insert(categories)
-    .values(category)
+    .values({
+      slug: category.slug,
+      name: category.name,
+      description: category.description,
+      imageAlt: category.imageAlt,
+      sortOrder: category.sortOrder,
+    })
     .onConflictDoUpdate({
       target: categories.slug,
-      set: { name: category.name, description: category.description, sortOrder: category.sortOrder, updatedAt: new Date() },
+      set: { name: category.name, description: category.description, imageAlt: category.imageAlt, sortOrder: category.sortOrder, updatedAt: new Date() },
     });
 }
 
 const savedCategories = await db.select().from(categories);
 const categoryIds = new Map(savedCategories.map((item) => [item.slug, item.id]));
+
+for (const category of categoryRows) {
+  const categoryId = categoryIds.get(category.slug);
+  if (!categoryId) continue;
+
+  const data = await readFile(path.join(process.cwd(), category.imagePath));
+  await db
+    .insert(categoryImages)
+    .values({
+      categoryId,
+      data,
+      mimeType: "image/webp",
+      sizeInBytes: data.byteLength,
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing({ target: categoryImages.categoryId });
+}
 
 for (const [index, item] of seedMenuItems.entries()) {
   const categoryId = categoryIds.get(item.category);
