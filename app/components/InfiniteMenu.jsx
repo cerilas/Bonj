@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { mat4, quat, vec2, vec3 } from 'gl-matrix';
+import { UiIcon } from './UiIcon';
 import './InfiniteMenu.css';
 
 const discVertShaderSource = `#version 300 es
@@ -451,24 +452,35 @@ class ArcballControl {
     this._rotationVelocity = 0;
     this._combinedQuat = quat.create();
 
-    canvas.addEventListener('pointerdown', e => {
+    this.handlePointerDown = e => {
       vec2.set(this.pointerPos, e.clientX, e.clientY);
       vec2.copy(this.previousPointerPos, this.pointerPos);
       this.isPointerDown = true;
-    });
-    canvas.addEventListener('pointerup', () => {
+    };
+    this.handlePointerEnd = () => {
       this.isPointerDown = false;
-    });
-    canvas.addEventListener('pointerleave', () => {
-      this.isPointerDown = false;
-    });
-    canvas.addEventListener('pointermove', e => {
+    };
+    this.handlePointerMove = e => {
       if (this.isPointerDown) {
         vec2.set(this.pointerPos, e.clientX, e.clientY);
       }
-    });
+    };
 
-    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', this.handlePointerDown);
+    canvas.addEventListener('pointerup', this.handlePointerEnd);
+    canvas.addEventListener('pointercancel', this.handlePointerEnd);
+    canvas.addEventListener('pointerleave', this.handlePointerEnd);
+    canvas.addEventListener('pointermove', this.handlePointerMove);
+
+    canvas.style.touchAction = 'pan-y';
+  }
+
+  destroy() {
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
+    this.canvas.removeEventListener('pointerup', this.handlePointerEnd);
+    this.canvas.removeEventListener('pointercancel', this.handlePointerEnd);
+    this.canvas.removeEventListener('pointerleave', this.handlePointerEnd);
+    this.canvas.removeEventListener('pointermove', this.handlePointerMove);
   }
 
   update(deltaTime, targetFrameDuration = 16) {
@@ -638,6 +650,7 @@ class InfiniteGridMenu {
   destroy() {
     this.disposed = true;
     cancelAnimationFrame(this.animationFrame);
+    this.control?.destroy();
   }
 
   #init(onInit) {
@@ -1014,7 +1027,7 @@ export default function InfiniteMenu({ items = [], scale = 1.0 }) {
           <p className={`face-description ${isMoving ? 'inactive' : 'active'}`}> {activeItem.description}</p>
 
           <button type="button" onClick={handleButtonClick} aria-label={`${activeItem.title} için menüyü aç`} className={`action-button ${isMoving ? 'inactive' : 'active'}`}>
-            <span className="action-button-icon">&#x2197;</span>
+            <span className="action-button-icon"><UiIcon name="arrow-up-right" /></span>
           </button>
         </>
       )}

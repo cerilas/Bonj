@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
 export type UiIconName =
+  | "arrow-down"
   | "arrow-down-right"
   | "arrow-left"
   | "arrow-right"
+  | "arrow-up"
   | "arrow-up-right"
   | "check"
   | "close"
@@ -24,9 +26,11 @@ type UiIconProps = {
 
 export function UiIcon({ name, className = "" }: UiIconProps) {
   const paths: Record<UiIconName, ReactNode> = {
+    "arrow-down": <><path d="M12 5v14" /><path d="m7 14 5 5 5-5" /></>,
     "arrow-down-right": <><path d="M6 6l12 12" /><path d="M9 18h9V9" /></>,
     "arrow-left": <><path d="M19 12H5" /><path d="m10 7-5 5 5 5" /></>,
     "arrow-right": <><path d="M5 12h14" /><path d="m14 7 5 5-5 5" /></>,
+    "arrow-up": <><path d="M12 19V5" /><path d="m7 10 5-5 5 5" /></>,
     "arrow-up-right": <><path d="M6 18 18 6" /><path d="M9 6h9v9" /></>,
     check: <path d="m5 12 4.2 4.2L19 6.5" />,
     close: <><path d="M6 6l12 12" /><path d="M18 6 6 18" /></>,

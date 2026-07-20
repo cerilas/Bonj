@@ -1812,7 +1812,7 @@ export function AdminDashboard({
             <h2 id="qr-title">QR menün<br /><em>hazır.</em></h2>
             <div className="admin-qr-image">{qrUrl ? <img src={qrUrl} alt="Bonj dijital menü QR kodu" /> : <span>Hazırlanıyor…</span>}</div>
             <p>QR kodu <strong>{typeof window !== "undefined" ? `${window.location.origin}/menu` : "/menu"}</strong> adresini açar.</p>
-            {qrUrl && <a className="admin-primary-button" href={qrUrl} download="bonj-qr-menu.png">QR’ı indir <span>↓</span></a>}
+            {qrUrl && <a className="admin-primary-button" href={qrUrl} download="bonj-qr-menu.png">QR’ı indir <span><UiIcon name="arrow-down" /></span></a>}
           </section>
         </div>
       )}
