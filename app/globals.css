@@ -317,6 +317,8 @@ button {
     scale(var(--cake-scale));
   transform-origin: 54.5% 66%;
   will-change: transform, filter;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .hero-art::before {
@@ -1925,6 +1927,15 @@ button {
   .hero-cake-sheen {
     -webkit-mask-position: 64% center;
     mask-position: 64% center;
+  }
+
+  .hero-cake-fx {
+    filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.2));
+    will-change: transform;
+  }
+
+  .hero-cake-sheen {
+    display: none;
   }
 
   .hero-content {

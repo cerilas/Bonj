@@ -110,37 +110,81 @@ export function CafeExperience({
     const art = hero?.querySelector<HTMLElement>(".hero-art");
     const cake = hero?.querySelector<HTMLElement>(".hero-cake-fx");
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileViewport = window.matchMedia("(max-width: 720px)");
     let frame = 0;
+    let targetProgress = 0;
+    let currentProgress = 0;
+    let previousFrameTime = 0;
 
     if (!hero || !art || !cake) return;
 
-    const updateCake = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const rect = hero.getBoundingClientRect();
-        const travel = Math.max(hero.offsetHeight - window.innerHeight, 1);
-        const rawProgress = Math.min(Math.max(-rect.top / travel, 0), 1);
-        const progress = reducedMotion.matches ? 0 : rawProgress;
+    const applyProgress = (progress: number) => {
+      const scaleAmount = mobileViewport.matches ? 0.09 : 0.105;
+      cake.style.setProperty("--cake-scale", String(1 + progress * scaleAmount));
+      cake.style.setProperty("--cake-x", `${progress * -0.7}%`);
+      cake.style.setProperty("--cake-y", `${progress * -2.6}%`);
 
-        cake.style.setProperty("--cake-scale", String(1 + progress * 0.105));
-        cake.style.setProperty("--cake-x", `${progress * -0.7}%`);
-        cake.style.setProperty("--cake-y", `${progress * -2.6}%`);
+      if (!mobileViewport.matches) {
         cake.style.setProperty("--cake-brightness", String(1 + progress * 0.07));
         art.style.setProperty("--sheen-x", `${-90 + progress * 250}%`);
         art.style.setProperty("--sheen-opacity", String(0.1 + progress * 0.24));
-      });
+      }
     };
 
-    updateCake();
-    window.addEventListener("scroll", updateCake, { passive: true });
-    window.addEventListener("resize", updateCake);
-    reducedMotion.addEventListener("change", updateCake);
+    const animateCake = (time: number) => {
+      const elapsed = previousFrameTime ? Math.min(time - previousFrameTime, 48) : 16;
+      previousFrameTime = time;
+      const smoothing = 1 - Math.exp(-elapsed * 0.014);
+
+      currentProgress += (targetProgress - currentProgress) * smoothing;
+      if (Math.abs(targetProgress - currentProgress) < 0.0004) {
+        currentProgress = targetProgress;
+      }
+      applyProgress(currentProgress);
+
+      if (currentProgress !== targetProgress) {
+        frame = requestAnimationFrame(animateCake);
+      } else {
+        frame = 0;
+        previousFrameTime = 0;
+      }
+    };
+
+    const measureTarget = () => {
+      const rect = hero.getBoundingClientRect();
+      const travel = Math.max(hero.offsetHeight - window.innerHeight, 1);
+      const rawProgress = Math.min(Math.max(-rect.top / travel, 0), 1);
+      targetProgress = reducedMotion.matches ? 0 : rawProgress;
+
+      if (!frame && currentProgress !== targetProgress) {
+        frame = requestAnimationFrame(animateCake);
+      }
+    };
+
+    const resetMotionMode = () => {
+      if (mobileViewport.matches) {
+        cake.style.setProperty("--cake-brightness", "1");
+        art.style.setProperty("--sheen-x", "-90%");
+        art.style.setProperty("--sheen-opacity", "0");
+      }
+      applyProgress(currentProgress);
+      measureTarget();
+    };
+
+    measureTarget();
+    currentProgress = targetProgress;
+    applyProgress(currentProgress);
+    window.addEventListener("scroll", measureTarget, { passive: true });
+    window.addEventListener("resize", measureTarget);
+    reducedMotion.addEventListener("change", measureTarget);
+    mobileViewport.addEventListener("change", resetMotionMode);
 
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", updateCake);
-      window.removeEventListener("resize", updateCake);
-      reducedMotion.removeEventListener("change", updateCake);
+      window.removeEventListener("scroll", measureTarget);
+      window.removeEventListener("resize", measureTarget);
+      reducedMotion.removeEventListener("change", measureTarget);
+      mobileViewport.removeEventListener("change", resetMotionMode);
     };
   }, []);
 
