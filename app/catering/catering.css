@@ -38,6 +38,9 @@
 .catering-event-grid button.is-selected i { opacity: 1; }
 .catering-field-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 17px; margin-top: 15px; }
 .catering-field-grid.three { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.catering-schedule-picker { display: grid; gap: 3px; margin-top: 27px; border: 1px solid rgba(23,17,20,.14); background: rgba(255,255,255,.24); padding: 16px; }
+.catering-schedule-picker > span { color: rgba(23,17,20,.67); font-size: 7px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.catering-capacity-note { align-self: end; margin-bottom: 12px; color: rgba(23,17,20,.46); font-size: 8px; line-height: 1.55; }
 .catering-form label { display: grid; gap: 8px; margin-top: 18px; }
 .catering-form input, .catering-form textarea { width: 100%; border: 0; border-bottom: 1px solid rgba(23,17,20,.24); border-radius: 0; outline: 0; background: transparent; color: #171114; padding: 10px 0 12px; font: 500 12px var(--sans); letter-spacing: 0; text-transform: none; }
 .catering-form input:focus, .catering-form textarea:focus { border-color: #a91940; }
@@ -139,6 +142,9 @@ html[data-theme="dark"] .catering-form input:focus,
 html[data-theme="dark"] .catering-form textarea:focus { border-color: #ff6689; }
 html[data-theme="dark"] .catering-form input::placeholder,
 html[data-theme="dark"] .catering-form textarea::placeholder { color: rgba(255,255,255,.48); }
+html[data-theme="dark"] .catering-schedule-picker { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.035); }
+html[data-theme="dark"] .catering-schedule-picker > span { color: rgba(255,255,255,.84); }
+html[data-theme="dark"] .catering-capacity-note { color: rgba(255,255,255,.58); }
 html[data-theme="dark"] .catering-budget { border-color: rgba(255,255,255,.14); }
 html[data-theme="dark"] .catering-consent { color: rgba(255,255,255,.72) !important; }
 html[data-theme="dark"] .catering-error { background: rgba(255,80,120,.12); color: #ffafc1; }
@@ -170,6 +176,8 @@ html[data-theme="dark"] .catering-promise span { color: rgba(255,255,255,.67); }
   .catering-form-header { padding: 23px 18px 19px; }
   .catering-event-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .catering-field-grid, .catering-field-grid.three { grid-template-columns: 1fr; }
+  .catering-schedule-picker { margin-top: 23px; padding: 13px; }
+  .catering-capacity-note { margin: 10px 0 0; }
   .catering-service-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .catering-service-options button:last-child { grid-column: 1 / -1; }
   .catering-budget { margin-top: 24px; padding: 20px 0 0; border-top: 1px solid rgba(23,17,20,.13); border-left: 0; }
