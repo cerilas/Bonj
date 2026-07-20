@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { TouchDateTimePicker } from "../components/TouchDateTimePicker";
 import { UiIcon } from "../components/UiIcon";
 
 const eventTypes = [
@@ -57,6 +58,10 @@ export function CateringForm() {
   const [reference, setReference] = useState("");
   const minDate = useMemo(
     () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
+    [],
+  );
+  const minTime = useMemo(
+    () => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date()),
     [],
   );
 
@@ -149,10 +154,30 @@ export function CateringForm() {
             {eventTypes.map(([value, label]) => <button className={form.eventType === value ? "is-selected" : ""} type="button" key={value} onClick={() => patch("eventType", value)} aria-pressed={form.eventType === value}>{label}<i><UiIcon name="check" /></i></button>)}
           </div>
         </fieldset>
-        <div className="catering-field-grid three">
-          <label>Organizasyon tarihi *<input type="date" min={minDate} value={form.eventDate} onChange={(e) => patch("eventDate", e.target.value)} /></label>
-          <label>Başlangıç saati *<input type="time" value={form.eventTime} onChange={(e) => patch("eventTime", e.target.value)} /></label>
+        <div className="catering-schedule-picker">
+          <span>Organizasyon tarihi ve başlangıç saati *</span>
+          <TouchDateTimePicker
+            date={form.eventDate}
+            time={form.eventTime}
+            minDate={minDate}
+            minTime={form.eventDate === minDate ? minTime : undefined}
+            helperText="Yakın günlerden birine dokun veya ileri tarih için takvimi aç."
+            onDateChange={(value) => {
+              setForm((current) => ({
+                ...current,
+                eventDate: value,
+                eventTime: value === minDate && current.eventTime && current.eventTime < minTime
+                  ? minTime
+                  : current.eventTime,
+              }));
+              setError("");
+            }}
+            onTimeChange={(value) => patch("eventTime", value)}
+          />
+        </div>
+        <div className="catering-field-grid">
           <label>Tahmini kişi sayısı *<input type="number" min="5" max="5000" inputMode="numeric" value={form.guestCount} onChange={(e) => patch("guestCount", e.target.value)} placeholder="Örn. 80" /></label>
+          <span className="catering-capacity-note">Kesin sayı henüz belli değilse yaklaşık katılımcı sayısını yazabilirsin.</span>
         </div>
         <div className="catering-field-grid">
           <label>Mekân adı<input value={form.venueName} maxLength={180} onChange={(e) => patch("venueName", e.target.value)} placeholder="Varsa salon / şirket adı" /></label>

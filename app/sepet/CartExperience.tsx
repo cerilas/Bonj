@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/use-cart";
 import { BrandLogo } from "../components/BrandLogo";
+import { TouchDateTimePicker } from "../components/TouchDateTimePicker";
 import { UiIcon } from "../components/UiIcon";
 
 type Fulfillment = "table" | "pickup";
@@ -28,8 +29,26 @@ export function CartExperience() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState<{ orderNumber: string; total: number } | null>(null);
-  const earliestPickup = useMemo(() => localDateTimeValue(new Date(Date.now() + 10 * 60_000)), []);
-  const defaultPickup = useMemo(() => localDateTimeValue(new Date(Date.now() + 30 * 60_000)), []);
+  const [pickupAt, setPickupAt] = useState("");
+  const [pickupWindow, setPickupWindow] = useState({ earliest: "", latestDate: "" });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      const earliest = localDateTimeValue(new Date(now + 10 * 60_000));
+      const initial = localDateTimeValue(new Date(now + 30 * 60_000));
+      const latestDate = localDateTimeValue(new Date(now + 30 * 24 * 60 * 60_000)).slice(0, 10);
+      setPickupWindow({ earliest, latestDate });
+      setPickupAt(initial);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const pickupDate = pickupAt.slice(0, 10);
+  const pickupTime = pickupAt.slice(11, 16);
+  const pickupMinTime = pickupDate === pickupWindow.earliest.slice(0, 10)
+    ? pickupWindow.earliest.slice(11, 16)
+    : undefined;
 
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -158,21 +177,32 @@ export function CartExperience() {
               {fulfillment === "table" ? (
                 <label className="cart-dynamic-field">Masa numaran *<input name="tableNumber" required maxLength={20} inputMode="numeric" placeholder="Örn. 12" /></label>
               ) : (
-                <label className="cart-dynamic-field cart-pickup-field">
+                <div className="cart-dynamic-field cart-pickup-field">
                   <span className="cart-field-label">Geliş tarihi ve saati *</span>
-                  <span className="cart-datetime-control">
-                    <i className="cart-date-icon" aria-hidden="true" />
-                    <input
-                      name="pickupAt"
-                      required
-                      type="datetime-local"
-                      min={earliestPickup}
-                      defaultValue={defaultPickup}
-                      aria-describedby="pickup-help"
+                  <input type="hidden" name="pickupAt" value={pickupAt} />
+                  {pickupAt ? (
+                    <TouchDateTimePicker
+                      date={pickupDate}
+                      time={pickupTime}
+                      minDate={pickupWindow.earliest.slice(0, 10)}
+                      maxDate={pickupWindow.latestDate}
+                      minTime={pickupMinTime}
+                      tone="dark"
+                      helperText="Mutfağın hazırlanması için en az 10 dakika ayırıyoruz."
+                      onDateChange={(value) => {
+                        const earliestDate = pickupWindow.earliest.slice(0, 10);
+                        const earliestTime = pickupWindow.earliest.slice(11, 16);
+                        const nextTime = value === earliestDate && pickupTime < earliestTime
+                          ? earliestTime
+                          : pickupTime;
+                        setPickupAt(`${value}T${nextTime}`);
+                      }}
+                      onTimeChange={(value) => setPickupAt(`${pickupDate}T${value}`)}
                     />
-                  </span>
-                  <small id="pickup-help">Mutfağın hazırlanması için en az 10 dakika ayırıyoruz.</small>
-                </label>
+                  ) : (
+                    <span className="cart-picker-loading">Uygun saatler hazırlanıyor…</span>
+                  )}
+                </div>
               )}
               <label>Sipariş notun<textarea name="note" maxLength={1000} rows={3} placeholder="Opsiyonel — örn. şekersiz, çatal istemiyorum…" /></label>
             </div>
