@@ -264,11 +264,6 @@ export function CafeExperience({
           </div>
 
           <div className="hero-content">
-          <div className="eyebrow hero-eyebrow">
-            <span>37.0662° N</span>
-            <i />
-            <span>Gaziantep</span>
-          </div>
           <h1 id="hero-title">
             Tatlıya
             <span>yeni bir boyut.</span>
