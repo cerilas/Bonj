@@ -11,16 +11,34 @@ const shortCodes: Record<NotificationType, string> = {
   dailySummary: "g",
 };
 
+function externalOrigin(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const isInternal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname.endsWith(".railway.internal");
+    return isInternal ? null : url.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function notificationBaseUrl(request: Request) {
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const host = forwardedHost || request.headers.get("host");
   const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const protocol = forwardedProtocol || new URL(request.url).protocol.replace(":", "");
   const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  const configuredOrigin = externalOrigin(configuredUrl);
+  const requestOrigin = externalOrigin(host ? `${protocol}://${host}` : null);
 
-  if (host && !/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
-    return `${protocol}://${host}`;
-  }
+  if (configuredOrigin) return configuredOrigin;
+  if (requestOrigin) return requestOrigin;
   return configuredUrl || (host ? `${protocol}://${host}` : new URL(request.url).origin);
 }
 
