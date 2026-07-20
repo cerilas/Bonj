@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { adminSessions, adminUsers } from "@/db/schema";
+import { buildAdminAccessSms } from "@/lib/admin-access-sms";
 import { getCurrentAdmin, hashPassword } from "@/lib/admin-auth";
 import { notificationBaseUrl } from "@/lib/admin-notifications";
 import { getAdminUser } from "@/lib/admin-users";
@@ -58,11 +59,11 @@ export async function POST(
     .set({ passwordHash, updatedAt: new Date() })
     .where(eq(adminUsers.id, userId));
 
-  const loginUrl = new URL("/admin", notificationBaseUrl(request)).toString();
+  const loginUrl = new URL("/b/a", notificationBaseUrl(request)).toString();
   try {
     await sendCerilasSms({
       phone: user.phone,
-      message: `Bonj admin giris bilgileriniz: ${loginUrl} E-posta: ${user.email} Yeni sifre: ${password} Guvenliginiz icin giris yaptiktan sonra sifrenizi degistirin.`,
+      message: buildAdminAccessSms({ loginUrl, email: user.email, password }),
     });
   } catch (error) {
     console.error(

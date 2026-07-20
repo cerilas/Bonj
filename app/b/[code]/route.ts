@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 const destinations: Record<string, string> = {
+  a: "/admin",
   s: "/admin?view=orders",
   m: "/admin?view=messages",
   c: "/admin?view=catering",
