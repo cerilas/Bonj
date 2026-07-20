@@ -161,7 +161,7 @@ export function CateringForm() {
             time={form.eventTime}
             minDate={minDate}
             minTime={form.eventDate === minDate ? minTime : undefined}
-            helperText="Yakın günlerden birine dokun veya ileri tarih için takvimi aç."
+            helperText="Tarih ve saati değiştirmek için ilgili alana dokun."
             onDateChange={(value) => {
               setForm((current) => ({
                 ...current,
