@@ -12,7 +12,9 @@ import type { AdminUser } from "@/lib/admin-users";
 import { AdminNotificationSettingsPanel } from "./AdminNotificationSettingsPanel";
 import { AdminUsersPanel } from "./AdminUsersPanel";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
+import { AdminApiDocsPanel } from "./AdminApiDocsPanel";
 import { BrandLogo } from "../components/BrandLogo";
+import { UiIcon } from "../components/UiIcon";
 
 type DropdownOption = {
   value: string;
@@ -50,7 +52,7 @@ type CategoryForm = {
 type MessageStatus = "all" | "new" | "read" | "resolved";
 type OrderStatus = "all" | "new" | "accepted" | "preparing" | "ready" | "completed" | "cancelled";
 type CateringStatus = "all" | "new" | "contacted" | "quoted" | "confirmed" | "completed" | "declined";
-export type AdminView = "analytics" | "products" | "categories" | "orders" | "messages" | "catering" | "users" | "notifications";
+export type AdminView = "analytics" | "products" | "categories" | "orders" | "messages" | "catering" | "users" | "notifications" | "api-docs";
 
 type AdminConfirmation = {
   title: string;
@@ -174,7 +176,7 @@ function AdminDropdown({
                 )}
                 {option.label}
               </span>
-              <i className="admin-dropdown-check" aria-hidden="true">✓</i>
+              <i className="admin-dropdown-check" aria-hidden="true"><UiIcon name="check" /></i>
             </button>
           ))}
         </div>
@@ -206,7 +208,7 @@ function AccentPicker({
           >
             <i className={`admin-accent-swatch tone-${option.tone}`} aria-hidden="true" />
             <span>{option.label}</span>
-            <small aria-hidden="true">✓</small>
+            <small aria-hidden="true"><UiIcon name="check" /></small>
           </button>
         ))}
       </div>
@@ -451,6 +453,7 @@ export function AdminDashboard({
   categories: initialCategories,
   initialNotificationSettings,
   dailySummaryCronUrl,
+  apiBaseUrl,
   initialUsers,
   initialView,
   initialSelectedOrder,
@@ -464,6 +467,7 @@ export function AdminDashboard({
   categories: AdminCategory[];
   initialNotificationSettings: AdminNotificationSettings;
   dailySummaryCronUrl: string;
+  apiBaseUrl: string;
   initialUsers: AdminUser[];
   initialView: AdminView;
   initialSelectedOrder: AdminOrder | null;
@@ -1074,13 +1078,14 @@ export function AdminDashboard({
           <button className={activeView === "catering" ? "is-current" : ""} type="button" onClick={() => changeAdminView("catering")}><i>06</i><span>Catering</span></button>
           <button className={activeView === "users" ? "is-current" : ""} type="button" onClick={() => changeAdminView("users")}><i>07</i><span>Kullanıcılar</span></button>
           <button className={activeView === "notifications" ? "is-current" : ""} type="button" onClick={() => changeAdminView("notifications")}><i>08</i><span>Bildirim Ayarları</span></button>
-          <button type="button" onClick={() => setQrOpen(true)}><i>09</i><span>QR Menü</span></button>
-          <a href="/menu" target="_blank"><i>10</i><span>Canlı menü ↗</span></a>
+          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>09</i><span>API Dokümantasyonu</span></button>
+          <button type="button" onClick={() => setQrOpen(true)}><i>10</i><span>QR Menü</span></button>
+          <a href="/menu" target="_blank"><i>11</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
         </nav>
         <div className="admin-account">
           <span>{adminName.slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
           <div><strong>{adminEmail}</strong><small>{adminName}</small></div>
-          <button type="button" onClick={logout} aria-label="Çıkış yap">↪</button>
+          <button type="button" onClick={logout} aria-label="Çıkış yap"><UiIcon name="logout" /></button>
         </div>
       </aside>
 
@@ -1107,7 +1112,7 @@ export function AdminDashboard({
             <h1>Günün<br /><em>menüsü.</em></h1>
           </div>
           <button className="admin-primary-button admin-add-button" type="button" onClick={openNewProduct}>
-            <span aria-hidden="true">＋</span> Yeni ürün
+            <span aria-hidden="true"><UiIcon name="plus" /></span> Yeni ürün
           </button>
         </header>
 
@@ -1119,7 +1124,7 @@ export function AdminDashboard({
 
         <div className="admin-toolbar">
           <label className="admin-search">
-            <span aria-hidden="true">⌕</span>
+            <span aria-hidden="true"><UiIcon name="search" /></span>
             <input
               value={query}
               onChange={(event) => {
@@ -1169,7 +1174,7 @@ export function AdminDashboard({
                 aria-pressed={product.isActive}
               ><i /><span>{product.isActive ? "Aktif" : "Pasif"}</span></button>
               <button className="admin-edit-button" type="button" onClick={() => openProduct(product)}>
-                Düzenle <span aria-hidden="true">↗</span>
+                Düzenle <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
               </button>
             </article>
           ))}
@@ -1190,7 +1195,7 @@ export function AdminDashboard({
               onClick={() => setProductPage((current) => Math.max(1, current - 1))}
               disabled={productPagination.page <= 1 || productsLoading}
               aria-label="Önceki sayfa"
-            >←</button>
+            ><UiIcon name="arrow-left" /></button>
             {paginationItems(productPagination.page, productPagination.totalPages).map((item) =>
               typeof item === "number" ? (
                 <button
@@ -1209,7 +1214,7 @@ export function AdminDashboard({
               onClick={() => setProductPage((current) => Math.min(productPagination.totalPages, current + 1))}
               disabled={productPagination.page >= productPagination.totalPages || productsLoading}
               aria-label="Sonraki sayfa"
-            >→</button>
+            ><UiIcon name="arrow-right" /></button>
           </div>
         </nav>
       </section> : activeView === "categories" ? <section className="admin-main" id="categories">
@@ -1219,7 +1224,7 @@ export function AdminDashboard({
             <h1>Menünün<br /><em>haritası.</em></h1>
           </div>
           <button className="admin-primary-button admin-add-button" type="button" onClick={openNewCategory}>
-            <span aria-hidden="true">＋</span> Yeni kategori
+            <span aria-hidden="true"><UiIcon name="plus" /></span> Yeni kategori
           </button>
         </header>
 
@@ -1232,7 +1237,7 @@ export function AdminDashboard({
         {categoryNotice && (
           <div className="admin-category-notice" role="status">
             <span>{categoryNotice}</span>
-            <button type="button" onClick={() => setCategoryNotice("")} aria-label="Bildirimi kapat">×</button>
+            <button type="button" onClick={() => setCategoryNotice("")} aria-label="Bildirimi kapat"><UiIcon name="close" /></button>
           </div>
         )}
 
@@ -1266,8 +1271,8 @@ export function AdminDashboard({
                 aria-pressed={category.isActive}
               ><i /><span>{category.isActive ? "Aktif" : "Pasif"}</span></button>
               <div className="admin-category-actions">
-                <button type="button" onClick={() => openCategory(category)}>Düzenle <span aria-hidden="true">↗</span></button>
-                <button className="is-danger" type="button" onClick={() => removeCategory(category)} aria-label={`${category.name} kategorisini sil`}>×</button>
+                <button type="button" onClick={() => openCategory(category)}>Düzenle <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span></button>
+                <button className="is-danger" type="button" onClick={() => removeCategory(category)} aria-label={`${category.name} kategorisini sil`}><UiIcon name="close" /></button>
               </div>
             </article>
           ))}
@@ -1280,7 +1285,7 @@ export function AdminDashboard({
             <h1>Gelen<br /><em>sesler.</em></h1>
           </div>
           <Link className="admin-primary-button admin-add-button" href="/iletisim" target="_blank">
-            Formu aç <span aria-hidden="true">↗</span>
+            Formu aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </Link>
         </header>
 
@@ -1312,7 +1317,7 @@ export function AdminDashboard({
         {messageLoadError && (
           <div className="admin-load-error" role="alert">
             <span><strong>Mesajlar yenilenemedi.</strong>{messageLoadError}</span>
-            <button type="button" onClick={() => void loadMessages()}>Tekrar dene <i aria-hidden="true">↻</i></button>
+            <button type="button" onClick={() => void loadMessages()}>Tekrar dene <i aria-hidden="true"><UiIcon name="refresh" /></i></button>
           </div>
         )}
 
@@ -1338,7 +1343,7 @@ export function AdminDashboard({
               </span>
               <span className="admin-message-row-copy">{message.message}</span>
               <time dateTime={message.createdAt}>{messageDate(message.createdAt)}</time>
-              <span className="admin-message-row-arrow" aria-hidden="true">↗</span>
+              <span className="admin-message-row-arrow" aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
             </button>
           ))}
           {!messageData.messages.length && !messagesLoading && <div className="admin-empty">Bu durumda mesaj bulunmuyor.</div>}
@@ -1348,13 +1353,13 @@ export function AdminDashboard({
           <nav className="admin-pagination" aria-label="Mesaj sayfaları">
             <span>{messageData.pagination.total} mesaj</span>
             <div>
-              <button type="button" onClick={() => setMessagePage((current) => Math.max(1, current - 1))} disabled={messagePage <= 1}>←</button>
+              <button type="button" onClick={() => setMessagePage((current) => Math.max(1, current - 1))} disabled={messagePage <= 1}><UiIcon name="arrow-left" /></button>
               {paginationItems(messageData.pagination.page, messageData.pagination.totalPages).map((item) =>
                 typeof item === "number" ? (
                   <button className={item === messageData.pagination.page ? "is-current" : ""} type="button" key={item} onClick={() => setMessagePage(item)}>{item}</button>
                 ) : <i key={item}>…</i>,
               )}
-              <button type="button" onClick={() => setMessagePage((current) => Math.min(messageData.pagination.totalPages, current + 1))} disabled={messagePage >= messageData.pagination.totalPages}>→</button>
+              <button type="button" onClick={() => setMessagePage((current) => Math.min(messageData.pagination.totalPages, current + 1))} disabled={messagePage >= messageData.pagination.totalPages}><UiIcon name="arrow-right" /></button>
             </div>
           </nav>
         )}
@@ -1365,7 +1370,7 @@ export function AdminDashboard({
             <h1>Yeni<br /><em>davetler.</em></h1>
           </div>
           <Link className="admin-primary-button admin-add-button" href="/catering" target="_blank">
-            Formu aç <span aria-hidden="true">↗</span>
+            Formu aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </Link>
         </header>
 
@@ -1389,7 +1394,7 @@ export function AdminDashboard({
         {cateringLoadError && (
           <div className="admin-load-error" role="alert">
             <span><strong>Catering talepleri yenilenemedi.</strong>{cateringLoadError}</span>
-            <button type="button" onClick={() => void loadCatering()}>Tekrar dene <i aria-hidden="true">↻</i></button>
+            <button type="button" onClick={() => void loadCatering()}>Tekrar dene <i aria-hidden="true"><UiIcon name="refresh" /></i></button>
           </div>
         )}
 
@@ -1401,7 +1406,7 @@ export function AdminDashboard({
               <span className="admin-catering-event"><strong>{cateringEventLabel(request.eventType)}</strong><small>{request.venueName || request.venueAddress}</small></span>
               <span className="admin-catering-person"><i>{request.fullName.slice(0, 1).toLocaleUpperCase("tr-TR")}</i><span><strong>{request.fullName}</strong><small>{request.phone}</small></span></span>
               <span className="admin-catering-date"><strong>{messageDate(request.eventAt)}</strong><small>{request.guestCount} kişi</small></span>
-              <span className="admin-catering-arrow">↗</span>
+              <span className="admin-catering-arrow"><UiIcon name="arrow-up-right" /></span>
             </button>
           ))}
           {!cateringData.requests.length && !cateringLoading && <div className="admin-empty">Bu durumda catering talebi bulunmuyor.</div>}
@@ -1411,11 +1416,11 @@ export function AdminDashboard({
           <nav className="admin-pagination" aria-label="Catering talep sayfaları">
             <span>{cateringData.pagination.total} talep</span>
             <div>
-              <button type="button" onClick={() => setCateringPage((current) => Math.max(1, current - 1))} disabled={cateringPage <= 1}>←</button>
+              <button type="button" onClick={() => setCateringPage((current) => Math.max(1, current - 1))} disabled={cateringPage <= 1}><UiIcon name="arrow-left" /></button>
               {paginationItems(cateringData.pagination.page, cateringData.pagination.totalPages).map((item) => typeof item === "number"
                 ? <button className={item === cateringData.pagination.page ? "is-current" : ""} type="button" key={item} onClick={() => setCateringPage(item)}>{item}</button>
                 : <i key={item}>…</i>)}
-              <button type="button" onClick={() => setCateringPage((current) => Math.min(cateringData.pagination.totalPages, current + 1))} disabled={cateringPage >= cateringData.pagination.totalPages}>→</button>
+              <button type="button" onClick={() => setCateringPage((current) => Math.min(cateringData.pagination.totalPages, current + 1))} disabled={cateringPage >= cateringData.pagination.totalPages}><UiIcon name="arrow-right" /></button>
             </div>
           </nav>
         )}
@@ -1423,6 +1428,8 @@ export function AdminDashboard({
         <AdminUsersPanel currentUserId={adminId} initialUsers={initialUsers} onRequestConfirmation={requestConfirmation} />
       ) : activeView === "notifications" ? (
         <AdminNotificationSettingsPanel initialSettings={initialNotificationSettings} cronEndpointUrl={dailySummaryCronUrl} />
+      ) : activeView === "api-docs" ? (
+        <AdminApiDocsPanel baseUrl={apiBaseUrl} />
       ) : <section className="admin-main" id="orders">
         <header className="admin-topbar">
           <div>
@@ -1430,7 +1437,7 @@ export function AdminDashboard({
             <h1>Yeni<br /><em>siparişler.</em></h1>
           </div>
           <Link className="admin-primary-button admin-add-button" href="/menu" target="_blank">
-            Menüyü aç <span aria-hidden="true">↗</span>
+            Menüyü aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </Link>
         </header>
 
@@ -1460,7 +1467,7 @@ export function AdminDashboard({
         {orderLoadError && (
           <div className="admin-load-error" role="alert">
             <span><strong>Siparişler yenilenemedi.</strong>{orderLoadError}</span>
-            <button type="button" onClick={() => void loadOrders()}>Tekrar dene <i aria-hidden="true">↻</i></button>
+            <button type="button" onClick={() => void loadOrders()}>Tekrar dene <i aria-hidden="true"><UiIcon name="refresh" /></i></button>
           </div>
         )}
 
@@ -1478,7 +1485,7 @@ export function AdminDashboard({
               </span>
               <span className="admin-order-items-preview">{order.items.map((item) => `${item.quantity}× ${item.productName}`).join(" · ")}</span>
               <span className="admin-order-total"><strong>{money(order.totalInKurus)}</strong><small>{messageDate(order.createdAt)}</small></span>
-              <span className="admin-order-arrow">↗</span>
+              <span className="admin-order-arrow"><UiIcon name="arrow-up-right" /></span>
             </button>
           ))}
           {!orderData.orders.length && !ordersLoading && <div className="admin-empty">Bu durumda sipariş bulunmuyor.</div>}
@@ -1488,13 +1495,13 @@ export function AdminDashboard({
           <nav className="admin-pagination" aria-label="Sipariş sayfaları">
             <span>{orderData.pagination.total} sipariş</span>
             <div>
-              <button type="button" onClick={() => setOrderPage((current) => Math.max(1, current - 1))} disabled={orderPage <= 1}>←</button>
+              <button type="button" onClick={() => setOrderPage((current) => Math.max(1, current - 1))} disabled={orderPage <= 1}><UiIcon name="arrow-left" /></button>
               {paginationItems(orderData.pagination.page, orderData.pagination.totalPages).map((item) =>
                 typeof item === "number" ? (
                   <button className={item === orderData.pagination.page ? "is-current" : ""} type="button" key={item} onClick={() => setOrderPage(item)}>{item}</button>
                 ) : <i key={item}>…</i>,
               )}
-              <button type="button" onClick={() => setOrderPage((current) => Math.min(orderData.pagination.totalPages, current + 1))} disabled={orderPage >= orderData.pagination.totalPages}>→</button>
+              <button type="button" onClick={() => setOrderPage((current) => Math.min(orderData.pagination.totalPages, current + 1))} disabled={orderPage >= orderData.pagination.totalPages}><UiIcon name="arrow-right" /></button>
             </div>
           </nav>
         )}
@@ -1512,7 +1519,7 @@ export function AdminDashboard({
                 <span className="admin-eyebrow">{messageTopic(selectedMessage.topic)} / {selectedMessage.status === "new" ? "YENİ" : selectedMessage.status === "read" ? "OKUNDU" : "ÇÖZÜLDÜ"}</span>
                 <time dateTime={selectedMessage.createdAt}>{messageDate(selectedMessage.createdAt)}</time>
               </div>
-              <button type="button" onClick={() => setSelectedMessage(null)} aria-label="Mesaj detayını kapat">×</button>
+              <button type="button" onClick={() => setSelectedMessage(null)} aria-label="Mesaj detayını kapat"><UiIcon name="close" /></button>
             </header>
 
             <div className="admin-message-detail-body">
@@ -1551,7 +1558,7 @@ export function AdminDashboard({
               </div>
               <div className="admin-message-detail-actions">
                 <button className="is-delete" type="button" onClick={() => removeMessage(selectedMessage)}>Sil</button>
-                <a href={`mailto:${selectedMessage.email}`}>Yanıtla <span>↗</span></a>
+                <a href={`mailto:${selectedMessage.email}`}>Yanıtla <span><UiIcon name="arrow-up-right" /></span></a>
               </div>
             </footer>
           </aside>
@@ -1563,7 +1570,7 @@ export function AdminDashboard({
           <aside className="admin-catering-detail" role="dialog" aria-modal="true" aria-labelledby="catering-detail-title">
             <header>
               <div><span className="admin-eyebrow">{cateringStatusLabel(selectedCatering.status)} / {selectedCatering.requestNumber}</span><time>{messageDate(selectedCatering.createdAt)}</time></div>
-              <button type="button" onClick={() => setSelectedCatering(null)} aria-label="Catering detayını kapat">×</button>
+              <button type="button" onClick={() => setSelectedCatering(null)} aria-label="Catering detayını kapat"><UiIcon name="close" /></button>
             </header>
             <div className="admin-catering-detail-body">
               <div className="admin-catering-detail-person">
@@ -1594,7 +1601,7 @@ export function AdminDashboard({
               <div className="admin-catering-state-picker" role="group" aria-label="Catering talep durumu">
                 {(["new", "contacted", "quoted", "confirmed", "completed", "declined"] as const).map((item) => <button className={selectedCatering.status === item ? "is-current" : ""} type="button" key={item} onClick={() => updateCateringStatus(selectedCatering, item)}>{cateringStatusLabel(item)}</button>)}
               </div>
-              <div className="admin-catering-detail-actions"><button type="button" onClick={() => removeCateringRequest(selectedCatering)}>Sil</button><a href={`tel:${selectedCatering.phone}`}>Ara <span>↗</span></a></div>
+              <div className="admin-catering-detail-actions"><button type="button" onClick={() => removeCateringRequest(selectedCatering)}>Sil</button><a href={`tel:${selectedCatering.phone}`}>Ara <span><UiIcon name="arrow-up-right" /></span></a></div>
             </footer>
           </aside>
         </div>
@@ -1609,7 +1616,7 @@ export function AdminDashboard({
           <aside className="admin-order-detail" role="dialog" aria-modal="true" aria-labelledby="order-detail-title">
             <header>
               <div><span className="admin-eyebrow">{orderStatusLabel(selectedOrder.status)} / {selectedOrder.orderNumber}</span><time>{messageDate(selectedOrder.createdAt)}</time></div>
-              <button type="button" onClick={() => setSelectedOrder(null)} aria-label="Sipariş detayını kapat">×</button>
+              <button type="button" onClick={() => setSelectedOrder(null)} aria-label="Sipariş detayını kapat"><UiIcon name="close" /></button>
             </header>
             <div className="admin-order-detail-body">
               <div className="admin-order-detail-customer">
@@ -1643,8 +1650,8 @@ export function AdminDashboard({
                 ))}
               </div>
               <div className="admin-order-detail-actions">
-                <button type="button" onClick={() => window.print()}>Yazdır <span aria-hidden="true">↗</span></button>
-                <a href={`tel:${selectedOrder.phone}`}>Ara <span>↗</span></a>
+                <button type="button" onClick={() => window.print()}>Yazdır <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span></button>
+                <a href={`tel:${selectedOrder.phone}`}>Ara <span><UiIcon name="arrow-up-right" /></span></a>
               </div>
             </footer>
           </aside>
@@ -1686,7 +1693,7 @@ export function AdminDashboard({
           <form className="admin-editor" onSubmit={saveProduct}>
             <header>
               <div><span className="admin-eyebrow">ÜRÜN KARTI</span><h2>{form.id ? "Ürünü düzenle" : "Yeni ürün ekle"}</h2></div>
-              <button type="button" onClick={() => setEditorOpen(false)} aria-label="Pencereyi kapat">×</button>
+              <button type="button" onClick={() => setEditorOpen(false)} aria-label="Pencereyi kapat"><UiIcon name="close" /></button>
             </header>
 
             <div className="admin-editor-grid">
@@ -1695,7 +1702,7 @@ export function AdminDashboard({
                   {(previewUrl || form.imageUrl) ? (
                     <img src={previewUrl || form.imageUrl || ""} alt="Ürün önizlemesi" />
                   ) : (
-                    <div><strong>＋</strong><span>Ürün görseli</span><small>JPG, PNG veya WebP · Maks. 5 MB</small></div>
+                    <div><strong><UiIcon name="plus" /></strong><span>Ürün görseli</span><small>JPG, PNG veya WebP · Maks. 5 MB</small></div>
                   )}
                   <input
                     type="file"
@@ -1744,7 +1751,7 @@ export function AdminDashboard({
             </div>
 
             {error && <div className="admin-form-error" role="alert">{error}</div>}
-            <footer><button type="button" onClick={() => setEditorOpen(false)}>Vazgeç</button><button className="admin-primary-button" type="submit" disabled={saving}>{saving ? "Kaydediliyor…" : "Ürünü kaydet"}<span>↗</span></button></footer>
+            <footer><button type="button" onClick={() => setEditorOpen(false)}>Vazgeç</button><button className="admin-primary-button" type="submit" disabled={saving}>{saving ? "Kaydediliyor…" : "Ürünü kaydet"}<span><UiIcon name="arrow-up-right" /></span></button></footer>
           </form>
         </div>
       )}
@@ -1754,7 +1761,7 @@ export function AdminDashboard({
           <form className="admin-editor admin-category-editor" onSubmit={saveCategory}>
             <header>
               <div><span className="admin-eyebrow">KATEGORİ KARTI</span><h2>{categoryForm.id ? "Kategoriyi düzenle" : "Yeni kategori ekle"}</h2></div>
-              <button type="button" onClick={() => setCategoryEditorOpen(false)} aria-label="Pencereyi kapat">×</button>
+              <button type="button" onClick={() => setCategoryEditorOpen(false)} aria-label="Pencereyi kapat"><UiIcon name="close" /></button>
             </header>
 
             <div className="admin-editor-grid">
@@ -1763,7 +1770,7 @@ export function AdminDashboard({
                   {(categoryPreviewUrl || categoryForm.imageUrl) ? (
                     <img src={categoryPreviewUrl || categoryForm.imageUrl || ""} alt="Kategori önizlemesi" />
                   ) : (
-                    <div><strong>＋</strong><span>Kategori görseli</span><small>JPG, PNG veya WebP · Maks. 5 MB</small></div>
+                    <div><strong><UiIcon name="plus" /></strong><span>Kategori görseli</span><small>JPG, PNG veya WebP · Maks. 5 MB</small></div>
                   )}
                   <input
                     type="file"
@@ -1792,7 +1799,7 @@ export function AdminDashboard({
             </div>
 
             {categoryError && <div className="admin-form-error" role="alert">{categoryError}</div>}
-            <footer><button type="button" onClick={() => setCategoryEditorOpen(false)}>Vazgeç</button><button className="admin-primary-button" type="submit" disabled={categorySaving}>{categorySaving ? "Kaydediliyor…" : "Kategoriyi kaydet"}<span>↗</span></button></footer>
+            <footer><button type="button" onClick={() => setCategoryEditorOpen(false)}>Vazgeç</button><button className="admin-primary-button" type="submit" disabled={categorySaving}>{categorySaving ? "Kaydediliyor…" : "Kategoriyi kaydet"}<span><UiIcon name="arrow-up-right" /></span></button></footer>
           </form>
         </div>
       )}
@@ -1800,7 +1807,7 @@ export function AdminDashboard({
       {qrOpen && (
         <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setQrOpen(false)}>
           <section className="admin-qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-title">
-            <button type="button" className="admin-qr-close" onClick={() => setQrOpen(false)} aria-label="QR penceresini kapat">×</button>
+            <button type="button" className="admin-qr-close" onClick={() => setQrOpen(false)} aria-label="QR penceresini kapat"><UiIcon name="close" /></button>
             <span className="admin-eyebrow">MASA / MENÜ</span>
             <h2 id="qr-title">QR menün<br /><em>hazır.</em></h2>
             <div className="admin-qr-image">{qrUrl ? <img src={qrUrl} alt="Bonj dijital menü QR kodu" /> : <span>Hazırlanıyor…</span>}</div>
@@ -1844,7 +1851,7 @@ export function AdminDashboard({
                 }}
               >Vazgeç</button>
               <button className="is-danger" type="button" disabled={confirming} onClick={() => void acceptConfirmation()}>
-                {confirming ? "İşleniyor…" : confirmation.confirmLabel}<span aria-hidden="true">→</span>
+                {confirming ? "İşleniyor…" : confirmation.confirmLabel}<span aria-hidden="true"><UiIcon name="arrow-right" /></span>
               </button>
             </div>
           </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UiIcon } from "../components/UiIcon";
 
 const topics = [
   { value: "collaboration", index: "01", title: "İş birliği", note: "Birlikte üretelim" },
@@ -48,12 +49,12 @@ export function ContactForm() {
   if (reference) {
     return (
       <section className="contact-success" aria-live="polite">
-        <span className="contact-success-mark" aria-hidden="true">✓</span>
+        <span className="contact-success-mark" aria-hidden="true"><UiIcon name="check" /></span>
         <span className="contact-form-kicker">MESAJIN BİZDE</span>
         <h2>İyi ki<br /><em>yazdın.</em></h2>
         <p>Mesajını aldık. Ekibimiz konusuna göre inceleyip en kısa sürede sana dönecek.</p>
         <small>Takip kodun / <strong>{reference}</strong></small>
-        <button type="button" onClick={() => setReference("")}>Yeni bir mesaj yaz <span>↗</span></button>
+        <button type="button" onClick={() => setReference("")}>Yeni bir mesaj yaz <span><UiIcon name="arrow-up-right" /></span></button>
       </section>
     );
   }
@@ -79,7 +80,7 @@ export function ContactForm() {
               <small>{item.index}</small>
               <strong>{item.title}</strong>
               <span>{item.note}</span>
-              <i aria-hidden="true">✓</i>
+              <i aria-hidden="true"><UiIcon name="check" /></i>
             </button>
           ))}
         </div>
@@ -101,7 +102,7 @@ export function ContactForm() {
           <span>Bilgilerimin bu mesaja yanıt vermek amacıyla işlenmesini kabul ediyorum.</span>
         </label>
         <button className="contact-submit" type="submit" disabled={sending}>
-          {sending ? "Gönderiliyor…" : "Mesajı gönder"}<span aria-hidden="true">↗</span>
+          {sending ? "Gönderiliyor…" : "Mesajı gönder"}<span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
         </button>
       </div>
       {error && <p className="contact-error" role="alert">{error}</p>}

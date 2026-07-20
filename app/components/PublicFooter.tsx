@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./BrandLogo";
 import { InstagramIcon } from "./InstagramIcon";
+import { UiIcon } from "./UiIcon";
 
 const mapsUrl =
   "https://www.google.com/maps/place//data=!4m2!3m1!1s0x1531e1303b6f3d83:0x2d766629ff77a0b9?sa=X&ved=1t:8290&ictx=111";
@@ -90,7 +91,7 @@ export function PublicFooter() {
           </div>
           <div className="public-location-address">
             <p>Osmangazi, Ahmet Şireci Blv.<br />Riva Apt. No: 18/I-E, Şehitkamil</p>
-            <a href={mapsUrl} target="_blank" rel="noreferrer">Yol tarifi al <i aria-hidden="true">↗</i></a>
+            <a href={mapsUrl} target="_blank" rel="noreferrer">Yol tarifi al <i aria-hidden="true"><UiIcon name="arrow-up-right" /></i></a>
           </div>
         </div>
 
@@ -111,11 +112,11 @@ export function PublicFooter() {
           <Link href="/" aria-label="Bonj Cake Story ana sayfa"><BrandLogo className="public-footer-logo" alt="" /></Link>
           <p>Gaziantep’te cheesecake, güçlü kahve, gün boyu brunch ve özenli tatlı ritüelleri.</p>
           <a className="public-footer-address" href={mapsUrl} target="_blank" rel="noreferrer">
-            Osmangazi, Ahmet Şireci Blv. Riva Apt. No: 18/I-E, 27000 Şehitkamil/Gaziantep <i aria-hidden="true">↗</i>
+            Osmangazi, Ahmet Şireci Blv. Riva Apt. No: 18/I-E, 27000 Şehitkamil/Gaziantep <i aria-hidden="true"><UiIcon name="arrow-up-right" /></i>
           </a>
           <a className="public-footer-phone" href="tel:+9050764477985">0507 644 79 85</a>
           <a className="public-footer-instagram" href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Bonj Cake Story Instagram hesabı">
-            <InstagramIcon /><span>@bonjcakestory</span><i aria-hidden="true">↗</i>
+            <InstagramIcon /><span>@bonjcakestory</span><i aria-hidden="true"><UiIcon name="arrow-up-right" /></i>
           </a>
         </section>
 
@@ -135,9 +136,9 @@ export function PublicFooter() {
           <Link href="/catering">Catering talebi</Link>
           <Link href="/iletisim">Soru ve cevap</Link>
           <Link href="/iletisim">Öneri ve şikâyet</Link>
-          <a href={mapsUrl} target="_blank" rel="noreferrer">Yol tarifi ↗</a>
+          <a href={mapsUrl} target="_blank" rel="noreferrer">Yol tarifi <UiIcon name="arrow-up-right" /></a>
           <a href="tel:+9050764477985">Hemen ara</a>
-          <a href={instagramUrl} target="_blank" rel="noreferrer">Instagram ↗</a>
+          <a href={instagramUrl} target="_blank" rel="noreferrer">Instagram <UiIcon name="arrow-up-right" /></a>
         </section>
       </div>
 
@@ -155,7 +156,7 @@ export function PublicFooter() {
 
       <div className="public-footer-bottom">
         <span>© {new Date().getFullYear()} Bonj Cake Story. Tüm hakları saklıdır.</span>
-        <div><a href={instagramUrl} target="_blank" rel="noreferrer"><InstagramIcon /> @bonjcakestory</a><Link href="/menu">Dijital menü ↗</Link></div>
+        <div><a href={instagramUrl} target="_blank" rel="noreferrer"><InstagramIcon /> @bonjcakestory</a><Link href="/menu">Dijital menü <UiIcon name="arrow-up-right" /></Link></div>
       </div>
       </footer>
     </>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const adminViews = new Set<AdminView>(["analytics", "products", "categories", "orders", "messages", "catering", "users", "notifications"]);
+const adminViews = new Set<AdminView>(["analytics", "products", "categories", "orders", "messages", "catering", "users", "notifications", "api-docs"]);
 
 export default async function AdminPage({
   searchParams,
@@ -66,6 +66,7 @@ export default async function AdminPage({
       categories={categories}
       initialNotificationSettings={notificationSettings}
       dailySummaryCronUrl={`${siteBaseUrl}/api/cron/daily-summary`}
+      apiBaseUrl={siteBaseUrl}
       initialUsers={adminUsers}
       initialView={initialView}
       initialSelectedOrder={selectedOrder}

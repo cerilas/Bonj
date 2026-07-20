@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "../components/BrandLogo";
+import { UiIcon } from "../components/UiIcon";
 
 export function AdminLogin() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export function AdminLogin() {
         <p>CAKE STORY / GAZİANTEP</p>
       </section>
       <section className="admin-login-panel">
-        <Link className="admin-back-link" href="/">← Siteye dön</Link>
+        <Link className="admin-back-link" href="/"><UiIcon name="arrow-left" /> Siteye dön</Link>
         <form className="admin-login-form" onSubmit={handleSubmit}>
           <span className="admin-eyebrow"><BrandLogo className="admin-eyebrow-logo" alt="" /> <b>/ YÖNETİM</b></span>
           <h1>Menü<br /><em>kontrolü.</em></h1>
@@ -62,7 +63,7 @@ export function AdminLogin() {
           {error && <div className="admin-form-error" role="alert">{error}</div>}
           <button className="admin-primary-button" type="submit" disabled={loading}>
             {loading ? "Kontrol ediliyor…" : "Panele gir"}
-            <span aria-hidden="true">↗</span>
+            <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </button>
         </form>
       </section>

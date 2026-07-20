@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/lib/use-cart";
 import { BrandLogo } from "./BrandLogo";
 import { InstagramIcon } from "./InstagramIcon";
+import { UiIcon } from "./UiIcon";
 
 const instagramUrl = "https://www.instagram.com/bonjcakestory/";
 
@@ -63,7 +64,7 @@ export function PublicHeader() {
           <Link href="/#mekan" onClick={closeMenu}>05 — Mekân</Link>
           <Link href="/iletisim" onClick={closeMenu}>06 — İletişim</Link>
           <Link href="/sepet" onClick={closeMenu}>07 — Sepet ({count})</Link>
-          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>08 — Instagram ↗</a>
+          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>08 — Instagram <UiIcon name="arrow-up-right" /></a>
         </nav>
         <a className="public-mobile-instagram" href={instagramUrl} target="_blank" rel="noreferrer"><InstagramIcon /> @bonjcakestory</a>
       </div>

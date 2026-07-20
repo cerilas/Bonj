@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { UiIcon } from "../components/UiIcon";
 
 const eventTypes = [
   ["bridal-room", "Gelin Odası"], ["engagement", "Söz / Nişan"], ["henna", "Kına Gecesi"],
@@ -123,12 +124,12 @@ export function CateringForm() {
   if (reference) {
     return (
       <section className="catering-success" aria-live="polite">
-        <span className="catering-success-mark">✓</span>
+        <span className="catering-success-mark"><UiIcon name="check" /></span>
         <span className="catering-form-kicker">TALEBİN BİZDE</span>
         <h2>Şimdi sıra<br /><em>bizde.</em></h2>
         <p>Detayları aldık. Ekibimiz ön değerlendirmeyi yapıp tercih ettiğin kanaldan sana ulaşacak.</p>
         <small>Talep kodun <strong>{reference}</strong></small>
-        <button type="button" onClick={() => { setReference(""); setForm(initialForm); setStep(1); }}>Yeni talep oluştur <span>↗</span></button>
+        <button type="button" onClick={() => { setReference(""); setForm(initialForm); setStep(1); }}>Yeni talep oluştur <span><UiIcon name="arrow-up-right" /></span></button>
       </section>
     );
   }
@@ -145,7 +146,7 @@ export function CateringForm() {
         <fieldset className="catering-choice-field">
           <legend>Organizasyon türü *</legend>
           <div className="catering-event-grid">
-            {eventTypes.map(([value, label]) => <button className={form.eventType === value ? "is-selected" : ""} type="button" key={value} onClick={() => patch("eventType", value)} aria-pressed={form.eventType === value}>{label}<i>✓</i></button>)}
+            {eventTypes.map(([value, label]) => <button className={form.eventType === value ? "is-selected" : ""} type="button" key={value} onClick={() => patch("eventType", value)} aria-pressed={form.eventType === value}>{label}<i><UiIcon name="check" /></i></button>)}
           </div>
         </fieldset>
         <div className="catering-field-grid three">
@@ -162,8 +163,8 @@ export function CateringForm() {
 
       {step === 2 && <section className="catering-step" aria-labelledby="catering-step-two">
         <div className="catering-step-title"><span>02</span><div><h2 id="catering-step-two">Servisi şekillendirelim.</h2><p>Birden fazla menü başlığı seçebilirsin.</p></div></div>
-        <fieldset className="catering-choice-field"><legend>Servis biçimi *</legend><div className="catering-service-options">{serviceStyles.map(([value, label, note]) => <button className={form.serviceStyle === value ? "is-selected" : ""} type="button" key={value} onClick={() => patch("serviceStyle", value)}><strong>{label}</strong><span>{note}</span><i>✓</i></button>)}</div></fieldset>
-        <fieldset className="catering-choice-field"><legend>Menüde neler olsun? *</legend><div className="catering-menu-options">{menuOptions.map(([value, label]) => <button className={form.menuInterests.includes(value) ? "is-selected" : ""} type="button" key={value} onClick={() => toggleMenu(value)} aria-pressed={form.menuInterests.includes(value)}><i>{form.menuInterests.includes(value) ? "✓" : "+"}</i>{label}</button>)}</div></fieldset>
+        <fieldset className="catering-choice-field"><legend>Servis biçimi *</legend><div className="catering-service-options">{serviceStyles.map(([value, label, note]) => <button className={form.serviceStyle === value ? "is-selected" : ""} type="button" key={value} onClick={() => patch("serviceStyle", value)}><strong>{label}</strong><span>{note}</span><i><UiIcon name="check" /></i></button>)}</div></fieldset>
+        <fieldset className="catering-choice-field"><legend>Menüde neler olsun? *</legend><div className="catering-menu-options">{menuOptions.map(([value, label]) => <button className={form.menuInterests.includes(value) ? "is-selected" : ""} type="button" key={value} onClick={() => toggleMenu(value)} aria-pressed={form.menuInterests.includes(value)}><i><UiIcon name={form.menuInterests.includes(value) ? "check" : "plus"} /></i>{label}</button>)}</div></fieldset>
         <div className="catering-field-grid">
           <label>Beslenme ve alerjen ihtiyaçları<textarea rows={3} maxLength={2000} value={form.dietaryNeeds} onChange={(e) => patch("dietaryNeeds", e.target.value)} placeholder="Vegan, vejetaryen, glutensiz, kuruyemiş alerjisi…" /></label>
           <fieldset className="catering-budget"><legend>Yaklaşık kişi başı bütçe</legend>{budgets.map(([value, label]) => <label key={value}><input type="radio" name="budget" checked={form.budgetRange === value} onChange={() => patch("budgetRange", value)} /><span>{label}</span></label>)}</fieldset>
@@ -185,10 +186,10 @@ export function CateringForm() {
 
       {error && <p className="catering-error" role="alert">{error}</p>}
       <footer className="catering-form-footer">
-        <button className="catering-back" type="button" onClick={() => { setStep((current) => Math.max(1, current - 1)); setError(""); }} disabled={step === 1}>← Geri</button>
+        <button className="catering-back" type="button" onClick={() => { setStep((current) => Math.max(1, current - 1)); setError(""); }} disabled={step === 1}><UiIcon name="arrow-left" /> Geri</button>
         {step < 3
-          ? <button className="catering-next" type="button" onClick={next}>Devam et <span>↗</span></button>
-          : <button className="catering-next" type="submit" disabled={sending}>{sending ? "Gönderiliyor…" : "Talebi gönder"}<span>↗</span></button>}
+          ? <button className="catering-next" type="button" onClick={next}>Devam et <span><UiIcon name="arrow-up-right" /></span></button>
+          : <button className="catering-next" type="submit" disabled={sending}>{sending ? "Gönderiliyor…" : "Talebi gönder"}<span><UiIcon name="arrow-up-right" /></span></button>}
       </footer>
     </form>
   );

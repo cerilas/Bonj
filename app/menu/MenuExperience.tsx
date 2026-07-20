@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { MenuItem } from "@/lib/menu";
 import { useCart } from "@/lib/use-cart";
 import { BrandLogo } from "../components/BrandLogo";
+import { UiIcon } from "../components/UiIcon";
 
 function price(value: number | null | undefined) {
   if (value == null) return null;
@@ -84,7 +85,7 @@ export function MenuExperience({ items }: { items: MenuItem[] }) {
                   })}
                 >
                   <span>{cartItems.some((entry) => entry.menuItemId === item.id) ? "Bir tane daha ekle" : "Sepete ekle"}</span>
-                  <strong>{cartItems.find((entry) => entry.menuItemId === item.id)?.quantity ?? "＋"}</strong>
+                  <strong>{cartItems.find((entry) => entry.menuItemId === item.id)?.quantity ?? <UiIcon name="plus" />}</strong>
                 </button>
               ) : (
                 <span className="qr-unavailable">Şu an siparişe kapalı</span>
@@ -97,14 +98,14 @@ export function MenuExperience({ items }: { items: MenuItem[] }) {
       {count > 0 && (
         <Link className="qr-cart-float" href="/sepet">
           <span><strong>{count}</strong> ürün</span>
-          <span>Sepeti gör · {price(totalInKurus)} <i>→</i></span>
+          <span>Sepeti gör · {price(totalInKurus)} <i><UiIcon name="arrow-right" /></i></span>
         </Link>
       )}
 
       <footer className="qr-menu-footer">
         <div><BrandLogo className="qr-menu-footer-logo bonj-brand-logo--light" /></div>
         <p>Fiyatlara KDV dahildir. Alerjen hassasiyetinizi sipariş öncesinde ekibimizle paylaşın.</p>
-        <Link href={count ? "/sepet" : "/"}>{count ? "Sepete git" : "Deneyimi keşfet"} ↗</Link>
+        <Link href={count ? "/sepet" : "/"}>{count ? "Sepete git" : "Deneyimi keşfet"} <UiIcon name="arrow-up-right" /></Link>
       </footer>
     </main>
   );

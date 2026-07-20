@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { UiIcon } from "./UiIcon";
 
 type Theme = "light" | "dark";
 
@@ -32,7 +33,7 @@ export function ThemeToggle() {
       aria-pressed={isDark}
       title={isDark ? "Açık tema" : "Koyu tema"}
     >
-      <span aria-hidden="true">{isDark ? "☼" : "☾"}</span>
+      <span aria-hidden="true"><UiIcon name={isDark ? "sun" : "moon"} /></span>
       <b>{isDark ? "Açık" : "Koyu"}</b>
     </button>
   );

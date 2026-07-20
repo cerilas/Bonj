@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminUser } from "@/lib/admin-users";
+import { UiIcon } from "../components/UiIcon";
 
 type UserForm = {
   id?: number;
@@ -247,7 +248,7 @@ export function AdminUsersPanel({
           <h1>Panel<br /><em>ekibi.</em></h1>
         </div>
         <button className="admin-primary-button admin-add-button" type="button" onClick={openNewUser}>
-          <span aria-hidden="true">＋</span> Yeni kullanıcı
+          <span aria-hidden="true"><UiIcon name="plus" /></span> Yeni kullanıcı
         </button>
       </header>
 
@@ -271,7 +272,7 @@ export function AdminUsersPanel({
       {notice && (
         <div className="admin-category-notice admin-user-notice" role="status">
           <span>{notice}</span>
-          <button type="button" onClick={() => setNotice("")} aria-label="Bildirimi kapat">×</button>
+          <button type="button" onClick={() => setNotice("")} aria-label="Bildirimi kapat"><UiIcon name="close" /></button>
         </div>
       )}
 
@@ -301,8 +302,8 @@ export function AdminUsersPanel({
               <div className="admin-user-date"><strong>{userDate(user.lastLoginAt)}</strong><small>{user.lastLoginAt ? "Son başarılı oturum" : "—"}</small></div>
               <div className="admin-user-date"><strong>{userDate(user.createdAt)}</strong><small>Hesap oluşturma</small></div>
               <div className="admin-user-actions">
-                <button type="button" onClick={() => openUser(user)}>Düzenle <span aria-hidden="true">↗</span></button>
-                <button className="is-danger" type="button" onClick={() => removeUser(user)} disabled={isCurrent} aria-label={`${user.name} kullanıcısını sil`}>×</button>
+                <button type="button" onClick={() => openUser(user)}>Düzenle <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span></button>
+                <button className="is-danger" type="button" onClick={() => removeUser(user)} disabled={isCurrent} aria-label={`${user.name} kullanıcısını sil`}><UiIcon name="close" /></button>
               </div>
             </article>
           );
@@ -322,7 +323,7 @@ export function AdminUsersPanel({
                 <span className="admin-eyebrow">ERİŞİM KARTI</span>
                 <h2>{form.id ? "Kullanıcıyı düzenle" : "Yeni kullanıcı ekle"}</h2>
               </div>
-              <button type="button" onClick={() => setEditorOpen(false)} disabled={saving} aria-label="Pencereyi kapat">×</button>
+              <button type="button" onClick={() => setEditorOpen(false)} disabled={saving} aria-label="Pencereyi kapat"><UiIcon name="close" /></button>
             </header>
 
             <div className="admin-user-editor-body">
@@ -359,7 +360,7 @@ export function AdminUsersPanel({
                       <small>Site adresi, e-posta ve sistemin ürettiği yeni parola kayıtlı telefona gönderilir.</small>
                     </div>
                     <button type="button" disabled={smsSending || saving || !form.phone || !form.isActive} onClick={() => void sendAccessSms()}>
-                      {smsSending ? "Gönderiliyor…" : "SMS gönder"}<i aria-hidden="true">↗</i>
+                      {smsSending ? "Gönderiliyor…" : "SMS gönder"}<i aria-hidden="true"><UiIcon name="arrow-up-right" /></i>
                     </button>
                     {smsNotice && <p role="status">{smsNotice}</p>}
                   </div>
@@ -370,7 +371,7 @@ export function AdminUsersPanel({
             {error && <div className="admin-form-error" role="alert">{error}</div>}
             <footer>
               <button type="button" onClick={() => setEditorOpen(false)} disabled={saving}>Vazgeç</button>
-              <button className="admin-primary-button" type="submit" disabled={saving}>{saving ? "Kaydediliyor…" : "Kullanıcıyı kaydet"}<span>↗</span></button>
+              <button className="admin-primary-button" type="submit" disabled={saving}>{saving ? "Kaydediliyor…" : "Kullanıcıyı kaydet"}<span><UiIcon name="arrow-up-right" /></span></button>
             </footer>
           </form>
         </div>

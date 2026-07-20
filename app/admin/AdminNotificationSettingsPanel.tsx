@@ -5,6 +5,7 @@ import type {
   AdminNotificationSettings,
   NotificationType,
 } from "@/lib/admin-notification-settings";
+import { UiIcon } from "../components/UiIcon";
 
 const settingCards: Array<{
   type: NotificationType;
@@ -238,7 +239,7 @@ export function AdminNotificationSettingsPanel({
                   <div className="admin-cron-url">
                     <small>İSTEK URL’Sİ</small>
                     <code>{cronEndpointUrl}</code>
-                    <button type="button" onClick={() => void copyCronUrl()}>{cronCopied ? "Kopyalandı ✓" : "Kopyala"}</button>
+                    <button type="button" onClick={() => void copyCronUrl()}>{cronCopied ? <><UiIcon name="check" /> Kopyalandı</> : "Kopyala"}</button>
                   </div>
                   <div className="admin-cron-meta">
                     <span><small>İSTEK TÜRÜ</small><strong>POST</strong></span>
@@ -256,7 +257,7 @@ export function AdminNotificationSettingsPanel({
                       <button type="button" onClick={() => void sendTest(card.type, phone)} disabled={testState?.status === "sending"}>
                         {testState?.status === "sending" ? "Gönderiliyor" : "Test et"}
                       </button>
-                      <button type="button" onClick={() => removePhone(card.type, phone)} aria-label={`${phone} numarasını kaldır`}>×</button>
+                      <button type="button" onClick={() => removePhone(card.type, phone)} aria-label={`${phone} numarasını kaldır`}><UiIcon name="close" /></button>
                       {testState?.message && <small role="status" aria-live="polite">{testState.message}</small>}
                     </div>
                   );
@@ -284,7 +285,7 @@ export function AdminNotificationSettingsPanel({
                     aria-label={`${card.title} için yeni telefon numarası`}
                   />
                 </span>
-                <button type="button" onClick={() => addPhone(card.type)}>Numara ekle <i aria-hidden="true">＋</i></button>
+                <button type="button" onClick={() => addPhone(card.type)}>Numara ekle <i aria-hidden="true"><UiIcon name="plus" /></i></button>
                 {inputErrors[card.type] && <small role="alert">{inputErrors[card.type]}</small>}
               </div>
             </article>
@@ -296,7 +297,7 @@ export function AdminNotificationSettingsPanel({
             {message || "Numaralar Türkiye formatında 05xx xxx xx xx olarak kaydedilir."}
           </div>
           <button className="admin-primary-button" type="submit" disabled={saving}>
-            {saving ? "Kaydediliyor…" : "Ayarları kaydet"}<span aria-hidden="true">↗</span>
+            {saving ? "Kaydediliyor…" : "Ayarları kaydet"}<span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
           </button>
         </div>
       </form>

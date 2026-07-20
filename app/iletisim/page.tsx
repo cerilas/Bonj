@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ContactForm } from "./ContactForm";
 import { BrandLogo } from "../components/BrandLogo";
 import { InstagramIcon } from "../components/InstagramIcon";
+import { UiIcon } from "../components/UiIcon";
 import "./iletisim.css";
 
 export const metadata: Metadata = {
@@ -59,15 +60,15 @@ export default function ContactPage() {
         </div>
         <div className="contact-faq-list">
           <details>
-            <summary>İş birliği teklifinde hangi bilgileri paylaşmalıyım?<span>＋</span></summary>
+            <summary>İş birliği teklifinde hangi bilgileri paylaşmalıyım?<span><UiIcon name="plus" /></span></summary>
             <p>Markanı, fikrini, hedeflediğin tarih aralığını ve varsa örnek çalışmalarını yazman değerlendirmeyi hızlandırır.</p>
           </details>
           <details>
-            <summary>Alerjen veya ürün içeriği sorabilir miyim?<span>＋</span></summary>
+            <summary>Alerjen veya ürün içeriği sorabilir miyim?<span><UiIcon name="plus" /></span></summary>
             <p>Elbette. İlgili ürünün adını yaz; içerik ve alerjen bilgileri için ekibimizden net bilgi alalım.</p>
           </details>
           <details>
-            <summary>Şikâyetimi nasıl daha hızlı çözebilirsiniz?<span>＋</span></summary>
+            <summary>Şikâyetimi nasıl daha hızlı çözebilirsiniz?<span><UiIcon name="plus" /></span></summary>
             <p>Ziyaret tarihini, yaklaşık saati ve yaşadığın durumu paylaş. Sipariş detayı varsa eklemen doğru ekibe ulaşmamızı kolaylaştırır.</p>
           </details>
         </div>
@@ -76,7 +77,7 @@ export default function ContactPage() {
       <footer className="contact-footer">
         <div><BrandLogo className="contact-footer-logo bonj-brand-logo--light" /></div>
         <p>Gaziantep’in tatlı frekansı.</p>
-        <a href="https://www.instagram.com/bonjcakestory/" target="_blank" rel="noreferrer"><InstagramIcon /> Instagram <span>↗</span></a>
+        <a href="https://www.instagram.com/bonjcakestory/" target="_blank" rel="noreferrer"><InstagramIcon /> Instagram <span><UiIcon name="arrow-up-right" /></span></a>
       </footer>
     </main>
   );
