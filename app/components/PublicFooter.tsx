@@ -25,12 +25,12 @@ const menuLinks = [
 ] as const;
 
 const legalLinks = [
-  "KVKK Aydınlatma Metni",
-  "Gizlilik Politikası",
-  "Çerez Politikası",
-  "Mesafeli Satış Sözleşmesi",
-  "İptal ve İade Koşulları",
-  "Kullanım Koşulları",
+  ["KVKK Aydınlatma Metni", "/yasal/kvkk-aydinlatma-metni"],
+  ["Gizlilik Politikası", "/yasal/gizlilik-politikasi"],
+  ["Çerez Politikası", "/yasal/cerez-politikasi"],
+  ["Mesafeli Satış Sözleşmesi", "/yasal/mesafeli-satis-sozlesmesi"],
+  ["İptal ve İade Koşulları", "/yasal/iptal-ve-iade-kosullari"],
+  ["Kullanım Koşulları", "/yasal/kullanim-kosullari"],
 ] as const;
 
 const discoveryLinks = [
@@ -127,7 +127,7 @@ export function PublicFooter() {
 
         <nav className="public-footer-column" aria-label="Yasal metinler">
           <h2>Yasal Metinler</h2>
-          {legalLinks.map((label) => <Link href="/menu" key={label}>{label}</Link>)}
+          {legalLinks.map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}
         </nav>
 
         <section className="public-footer-column public-footer-contact">
