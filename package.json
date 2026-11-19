@@ -6,16 +6,17 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "NODE_OPTIONS=\"--no-experimental-require-module\" next dev",
+    "build": "NODE_OPTIONS=\"--no-experimental-require-module\" next build",
+    "start": "NODE_OPTIONS=\"--no-experimental-require-module\" next start",
     "lint": "eslint .",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "NODE_OPTIONS=\"--no-experimental-require-module\" node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs generate",
+    "db:migrate": "NODE_OPTIONS=\"--no-experimental-require-module\" node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed-admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
+    "@vis.gl/react-google-maps": "^1.10.1",
     "drizzle-orm": "0.45.2",
     "gl-matrix": "^3.4.4",
     "next": "16.2.6",

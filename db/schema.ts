@@ -109,18 +109,111 @@ export const productImages = pgTable(
   ],
 );
 
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    phone: varchar("phone", { length: 32 }).notNull(),
+    fullName: varchar("full_name", { length: 120 }),
+    email: varchar("email", { length: 180 }),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("users_phone_uidx").on(table.phone),
+  ],
+);
+
+export const userSessions = pgTable(
+  "user_sessions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_sessions_token_uidx").on(table.tokenHash),
+    index("user_sessions_user_idx").on(table.userId),
+    index("user_sessions_expires_idx").on(table.expiresAt),
+  ],
+);
+
+export const userOtps = pgTable(
+  "user_otps",
+  {
+    id: serial("id").primaryKey(),
+    phone: varchar("phone", { length: 32 }).notNull(),
+    code: varchar("code", { length: 8 }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    isUsed: boolean("is_used").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("user_otps_phone_idx").on(table.phone),
+    index("user_otps_created_idx").on(table.createdAt),
+  ],
+);
+
+export const userAddresses = pgTable(
+  "user_addresses",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 60 }).notNull(),
+    fullName: varchar("full_name", { length: 120 }).notNull(),
+    phone: varchar("phone", { length: 32 }).notNull(),
+    city: varchar("city", { length: 60 }).notNull().default("Gaziantep"),
+    district: varchar("district", { length: 80 }).notNull(),
+    street: varchar("street", { length: 150 }).notNull(),
+    addressLine: text("address_line").notNull(),
+    lat: text("lat"),
+    lng: text("lng"),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("user_addresses_user_idx").on(table.userId),
+  ],
+);
+
 export const orders = pgTable(
   "orders",
   {
     id: serial("id").primaryKey(),
     orderNumber: varchar("order_number", { length: 40 }).notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    addressId: integer("address_id").references(() => userAddresses.id, { onDelete: "set null" }),
     customerName: varchar("customer_name", { length: 120 }).notNull(),
     phone: varchar("phone", { length: 32 }).notNull(),
     fulfillmentType: varchar("fulfillment_type", { length: 24 }).notNull(),
     tableNumber: varchar("table_number", { length: 20 }),
     pickupAt: timestamp("pickup_at", { withTimezone: true }),
+    address: text("address"),
     note: text("note"),
     status: varchar("status", { length: 24 }).notNull().default("new"),
+    paymentStatus: varchar("payment_status", { length: 24 }).notNull().default("pending"),
+    transactionId: varchar("transaction_id", { length: 64 }),
     totalInKurus: integer("total_in_kurus").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -131,6 +224,7 @@ export const orders = pgTable(
   },
   (table) => [
     uniqueIndex("orders_order_number_uidx").on(table.orderNumber),
+    index("orders_user_idx").on(table.userId),
     index("orders_status_created_idx").on(table.status, table.createdAt),
     index("orders_phone_created_idx").on(table.phone, table.createdAt),
     index("orders_pickup_at_idx").on(table.pickupAt),
@@ -374,9 +468,172 @@ export const cateringRequests = pgTable(
   ],
 );
 
+export const cafeTables = pgTable(
+  "cafe_tables",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 20 }).notNull(),
+    name: varchar("name", { length: 60 }).notNull(),
+    zone: varchar("zone", { length: 40 }).notNull().default("Salon"),
+    capacity: integer("capacity").notNull().default(4),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("cafe_tables_code_uidx").on(table.code),
+    index("cafe_tables_sort_idx").on(table.sortOrder, table.id),
+  ],
+);
+
+export const tableSessions = pgTable(
+  "table_sessions",
+  {
+    id: serial("id").primaryKey(),
+    tableId: integer("table_id")
+      .notNull()
+      .references(() => cafeTables.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    guestCount: integer("guest_count").notNull().default(2),
+    customerName: varchar("customer_name", { length: 120 }),
+    note: text("note"),
+    paymentMethod: varchar("payment_method", { length: 24 }),
+    paidCashInKurus: integer("paid_cash_in_kurus").notNull().default(0),
+    paidCardInKurus: integer("paid_card_in_kurus").notNull().default(0),
+    discountInKurus: integer("discount_in_kurus").notNull().default(0),
+    openedAt: timestamp("opened_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("table_sessions_table_status_idx").on(table.tableId, table.status),
+    index("table_sessions_opened_idx").on(table.openedAt),
+  ],
+);
+
+export const tableSessionItems = pgTable(
+  "table_session_items",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => tableSessions.id, { onDelete: "cascade" }),
+    menuItemId: integer("menu_item_id")
+      .references(() => menuItems.id, { onDelete: "set null" }),
+    productName: varchar("product_name", { length: 120 }).notNull(),
+    unitPriceInKurus: integer("unit_price_in_kurus").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    note: varchar("note", { length: 180 }),
+    source: varchar("source", { length: 20 }).notNull().default("pos"),
+    orderId: integer("order_id")
+      .references(() => orders.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("table_session_items_session_idx").on(table.sessionId),
+    index("table_session_items_menu_item_idx").on(table.menuItemId),
+  ],
+);
+
+export const staffUsers = pgTable(
+  "staff_users",
+  {
+    id: serial("id").primaryKey(),
+    fullName: varchar("full_name", { length: 120 }).notNull(),
+    phone: varchar("phone", { length: 32 }).notNull(),
+    role: varchar("role", { length: 24 }).notNull().default("garson"),
+    passwordHash: text("password_hash").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("staff_users_phone_uidx").on(table.phone),
+    index("staff_users_role_idx").on(table.role),
+  ],
+);
+
+export const staffSessions = pgTable(
+  "staff_sessions",
+  {
+    id: serial("id").primaryKey(),
+    staffId: integer("staff_id")
+      .notNull()
+      .references(() => staffUsers.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 128 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("staff_sessions_token_uidx").on(table.tokenHash),
+    index("staff_sessions_staff_idx").on(table.staffId),
+    index("staff_sessions_expires_idx").on(table.expiresAt),
+  ],
+);
+
+export const tableActivityLogs = pgTable(
+  "table_activity_logs",
+  {
+    id: serial("id").primaryKey(),
+    tableId: integer("table_id")
+      .notNull()
+      .references(() => cafeTables.id, { onDelete: "cascade" }),
+    sessionId: integer("session_id")
+      .references(() => tableSessions.id, { onDelete: "set null" }),
+    actorType: varchar("actor_type", { length: 16 }).notNull(),
+    actorId: integer("actor_id").notNull(),
+    actorName: varchar("actor_name", { length: 120 }).notNull(),
+    actorRole: varchar("actor_role", { length: 24 }).notNull(),
+    action: varchar("action", { length: 32 }).notNull(),
+    summary: text("summary").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("table_activity_logs_table_created_idx").on(table.tableId, table.createdAt),
+    index("table_activity_logs_created_idx").on(table.createdAt),
+  ],
+);
+
 export type Category = typeof categories.$inferSelect;
 export type MenuItemRecord = typeof menuItems.$inferSelect;
 export type ContactMessageRecord = typeof contactMessages.$inferSelect;
 export type OrderRecord = typeof orders.$inferSelect;
 export type CateringRequestRecord = typeof cateringRequests.$inferSelect;
 export type NotificationSettingRecord = typeof notificationSettings.$inferSelect;
+export type UserRecord = typeof users.$inferSelect;
+export type UserSessionRecord = typeof userSessions.$inferSelect;
+export type UserOtpRecord = typeof userOtps.$inferSelect;
+export type UserAddressRecord = typeof userAddresses.$inferSelect;
+export type CafeTableRecord = typeof cafeTables.$inferSelect;
+export type TableSessionRecord = typeof tableSessions.$inferSelect;
+export type TableSessionItemRecord = typeof tableSessionItems.$inferSelect;
+export type StaffUserRecord = typeof staffUsers.$inferSelect;
+export type StaffSessionRecord = typeof staffSessions.$inferSelect;
+export type TableActivityLogRecord = typeof tableActivityLogs.$inferSelect;
+

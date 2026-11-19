@@ -20,6 +20,7 @@ export function getDb() {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
+      ssl: connectionString.includes('rlwy.net') ? 'require' : false,
     });
 
   if (process.env.NODE_ENV !== "production") {

@@ -79,11 +79,14 @@ const discoveryLinks = [
 export function PublicFooter() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/garson")) return null;
+
+  const isAuthOrPortal = pathname === "/giris" || pathname === "/hesabim";
 
   return (
     <>
-      <section className="public-location" aria-labelledby="public-location-title">
+      {!isAuthOrPortal && (
+        <section className="public-location" aria-labelledby="public-location-title">
         <div className="public-location-heading">
           <div>
             <span>BONJ / GAZİANTEP</span>
@@ -105,6 +108,7 @@ export function PublicFooter() {
           />
         </div>
       </section>
+      )}
 
       <footer className="public-site-footer">
       <div className="public-footer-top">

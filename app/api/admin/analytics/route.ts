@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { getAdminAnalytics, type AnalyticsPeriod } from "@/lib/admin-analytics";
 
-const periods = new Set<AnalyticsPeriod>(["today", "3d", "7d", "30d", "90d"]);
+const periods = new Set<AnalyticsPeriod>(["today", "3d", "7d", "30d", "90d", "180d", "365d"]);
 
 export async function GET(request: Request) {
   try {

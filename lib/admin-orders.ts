@@ -21,6 +21,8 @@ export type AdminOrder = {
   pickupAt: string | null;
   note: string;
   status: string;
+  paymentStatus: string;
+  transactionId: string | null;
   totalInKurus: number;
   createdAt: string;
   items: AdminOrderItem[];
@@ -48,6 +50,8 @@ export async function getAdminOrder(id: number): Promise<AdminOrder | null> {
     pickupAt: order.pickupAt?.toISOString() ?? null,
     note: order.note ?? "",
     status: order.status,
+    paymentStatus: order.paymentStatus ?? "pending",
+    transactionId: order.transactionId ?? null,
     totalInKurus: order.totalInKurus,
     createdAt: order.createdAt.toISOString(),
     items: items.map((item) => ({
@@ -120,6 +124,8 @@ export async function getAdminOrders({
       pickupAt: order.pickupAt?.toISOString() ?? null,
       note: order.note ?? "",
       status: order.status,
+      paymentStatus: order.paymentStatus ?? "pending",
+      transactionId: order.transactionId ?? null,
       totalInKurus: order.totalInKurus,
       createdAt: order.createdAt.toISOString(),
       items: itemsByOrder.get(order.id) ?? [],

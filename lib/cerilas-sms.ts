@@ -16,7 +16,10 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 let tokenRequest: Promise<string> | null = null;
 
 function smsConfig() {
-  const baseUrl = process.env.CERILAS_SMS_BASE_URL?.trim().replace(/\/+$/, "");
+  let baseUrl = process.env.CERILAS_SMS_BASE_URL?.trim().replace(/\/+$/, "");
+  if (baseUrl) {
+    baseUrl = baseUrl.replace("https://www.cerilas.com", "https://cerilas.com").replace("http://www.cerilas.com", "https://cerilas.com");
+  }
   const email = process.env.CERILAS_SMS_EMAIL?.trim();
   const password = process.env.CERILAS_SMS_PASSWORD;
 

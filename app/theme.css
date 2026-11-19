@@ -432,6 +432,53 @@ html[data-theme="dark"] .admin-editor textarea,
 html[data-theme="dark"] .admin-dropdown-trigger { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.06); color: #fff; }
 html[data-theme="dark"] .admin-dropdown-menu { background: #21191d; color: #f2ecdf; border-color: rgba(255, 255, 255, 0.16); }
 
+/* Order Payment & Refund Dark Mode */
+html[data-theme="dark"] .admin-order-payment-card {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="dark"] .admin-order-payment-badge.is-paid {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+html[data-theme="dark"] .admin-order-payment-badge.is-refunded {
+  background: rgba(255, 80, 120, 0.15);
+  color: #ff7898;
+  border-color: rgba(255, 80, 120, 0.35);
+}
+
+html[data-theme="dark"] .admin-order-refund-btn {
+  border-color: rgba(255, 80, 120, 0.35);
+  background: rgba(255, 80, 120, 0.1);
+  color: #ff7898;
+}
+
+html[data-theme="dark"] .admin-order-refund-btn:hover:not(:disabled) {
+  background: #ff5078;
+  border-color: #ff5078;
+  color: #fff;
+}
+
+html[data-theme="dark"] .admin-order-refunded-notice {
+  color: #ff7898;
+}
+
+html[data-theme="dark"] .admin-order-badge-paid {
+  color: #4ade80;
+}
+
+html[data-theme="dark"] .admin-order-badge-refunded {
+  color: #ff7898;
+}
+
+html[data-theme="dark"] .status-refunded .admin-order-row-status > i {
+  background: #ff5078;
+  box-shadow: 0 0 0 4px rgba(255, 80, 120, 0.16);
+}
+
 /* Admin dark-mode contrast: lists, filters, details and editors. */
 html[data-theme="dark"] .admin-eyebrow,
 html[data-theme="dark"] .admin-topbar h1 em,

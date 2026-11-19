@@ -3,14 +3,15 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { orders } from "@/db/schema";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { getTableOperator } from "@/lib/staff-auth";
 
-const statuses = new Set(["new", "accepted", "preparing", "ready", "completed", "cancelled"]);
+const statuses = new Set(["new", "accepted", "preparing", "ready", "completed", "cancelled", "refunded"]);
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  if (!(await getCurrentAdmin())) {
+  if (!(await getTableOperator())) {
     return NextResponse.json({ error: "Yetkisiz." }, { status: 401 });
   }
   const { id } = await context.params;

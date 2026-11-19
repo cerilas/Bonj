@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/lib/use-cart";
+import { useUser } from "@/lib/use-user";
 import { BrandLogo } from "./BrandLogo";
 import { InstagramIcon } from "./InstagramIcon";
 import { UiIcon } from "./UiIcon";
@@ -13,9 +14,10 @@ const instagramUrl = "https://www.instagram.com/bonjcakestory/";
 export function PublicHeader() {
   const pathname = usePathname();
   const { count } = useCart();
+  const { user, isLoggedIn } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/garson")) return null;
 
   const closeMenu = () => setIsOpen(false);
 
@@ -36,6 +38,15 @@ export function PublicHeader() {
         </nav>
 
         <div className="public-header-actions">
+          <Link
+            className={`public-header-user-btn ${isLoggedIn ? "is-logged-in" : ""}`}
+            href={isLoggedIn ? "/hesabim" : "/giris"}
+            onClick={closeMenu}
+            aria-label={isLoggedIn ? "Hesabım" : "Giriş Yap"}
+          >
+            <UiIcon name="user" />
+            {isLoggedIn ? (user?.fullName ? user.fullName.split(" ")[0] : "Hesabım") : "Giriş Yap"}
+          </Link>
           <a className="public-header-instagram" href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Bonj Cake Story Instagram hesabı">
             <InstagramIcon /> Instagram
           </a>
@@ -64,7 +75,10 @@ export function PublicHeader() {
           <Link href="/#mekan" onClick={closeMenu}>05 — Mekân</Link>
           <Link href="/iletisim" onClick={closeMenu}>06 — İletişim</Link>
           <Link href="/sepet" onClick={closeMenu}>07 — Sepet ({count})</Link>
-          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>08 — Instagram <UiIcon name="arrow-up-right" /></a>
+          <Link href={isLoggedIn ? "/hesabim" : "/giris"} onClick={closeMenu}>
+            08 — {isLoggedIn ? `Hesabım (${user?.fullName ? user.fullName.split(" ")[0] : "Üye"})` : "Giriş Yap / Üye Ol"}
+          </Link>
+          <a href={instagramUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>09 — Instagram <UiIcon name="arrow-up-right" /></a>
         </nav>
         <a className="public-mobile-instagram" href={instagramUrl} target="_blank" rel="noreferrer"><InstagramIcon /> @bonjcakestory</a>
       </div>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { getAdminOrders } from "@/lib/admin-orders";
 
-const statuses = new Set(["new", "accepted", "preparing", "ready", "completed", "cancelled"]);
+const statuses = new Set(["new", "accepted", "preparing", "ready", "completed", "cancelled", "refunded"]);
 
 export async function GET(request: Request) {
   try {

@@ -13,6 +13,10 @@ import { AdminNotificationSettingsPanel } from "./AdminNotificationSettingsPanel
 import { AdminUsersPanel } from "./AdminUsersPanel";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
 import { AdminApiDocsPanel } from "./AdminApiDocsPanel";
+import { AdminTablesPanel, posPaymentLabel, type PosPrintReceiptData } from "./AdminTablesPanel";
+import { AdminStaffPanel } from "./AdminStaffPanel";
+import type { AdminLiveEvent } from "../api/admin/live-events/route";
+import { playCashierAlertSound, unlockCashierAudio } from "@/lib/admin-sound";
 import { BrandLogo } from "../components/BrandLogo";
 import { UiIcon } from "../components/UiIcon";
 
@@ -50,9 +54,19 @@ type CategoryForm = {
 };
 
 type MessageStatus = "all" | "new" | "read" | "resolved";
-type OrderStatus = "all" | "new" | "accepted" | "preparing" | "ready" | "completed" | "cancelled";
+type OrderStatus = "all" | "new" | "accepted" | "preparing" | "ready" | "completed" | "cancelled" | "refunded";
 type CateringStatus = "all" | "new" | "contacted" | "quoted" | "confirmed" | "completed" | "declined";
-export type AdminView = "analytics" | "products" | "categories" | "orders" | "messages" | "catering" | "users" | "notifications" | "api-docs";
+export type AdminView = "analytics" | "products" | "categories" | "tables" | "orders" | "messages" | "catering" | "users" | "staff" | "notifications" | "api-docs";
+
+type LiveToastItem = {
+  key: string;
+  badge: string;
+  tone: "delivery" | "qr" | "pickup" | "table";
+  title: string;
+  subtitle: string;
+  createdAt: string;
+  event: AdminLiveEvent;
+};
 
 type AdminConfirmation = {
   title: string;
@@ -296,6 +310,7 @@ function orderStatusLabel(status: string) {
     ready: "Hazır",
     completed: "Tamamlandı",
     cancelled: "İptal",
+    refunded: "Para İadesi Yapıldı",
   }[status] ?? status;
 }
 
@@ -493,6 +508,13 @@ export function AdminDashboard({
   const [error, setError] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
+  const [posPrintReceipt, setPosPrintReceipt] = useState<PosPrintReceiptData | null>(null);
+  const [focusTableId, setFocusTableId] = useState<number | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
+  const [liveToasts, setLiveToasts] = useState<LiveToastItem[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const lastLivePollRef = useRef<string>(new Date().toISOString());
+  const seenEventKeysRef = useRef<Set<string>>(new Set());
   const [categoryEditorOpen, setCategoryEditorOpen] = useState(false);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(
     emptyCategoryForm(initialCategories.length + 1),
@@ -523,6 +545,7 @@ export function AdminDashboard({
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderLoadError, setOrderLoadError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(initialSelectedOrder);
+  const [refunding, setRefunding] = useState(false);
   const [cateringData, setCateringData] = useState<AdminCateringPage>({
     requests: [],
     pagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 },
@@ -666,6 +689,112 @@ export function AdminDashboard({
   useEffect(() => {
     if (activeView === "orders") void loadOrders();
   }, [activeView, loadOrders]);
+
+  useEffect(() => {
+    if (!pendingOrderId || activeView !== "orders") return;
+    const found = orderData.orders.find((o) => o.id === pendingOrderId);
+    if (found) {
+      setSelectedOrder(found);
+      setPendingOrderId(null);
+    }
+  }, [pendingOrderId, activeView, orderData.orders]);
+
+  useEffect(() => {
+    const unlock = () => {
+      void unlockCashierAudio();
+    };
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/live-events?since=${encodeURIComponent(lastLivePollRef.current)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok || !active) return;
+        const data = (await res.json()) as { serverTime?: string; events?: AdminLiveEvent[] };
+        if (data.serverTime) {
+          lastLivePollRef.current = data.serverTime;
+        }
+        const incoming = data.events ?? [];
+        const fresh: LiveToastItem[] = [];
+
+        for (const ev of incoming) {
+          const key = `${ev.kind}-${ev.id}`;
+          if (seenEventKeysRef.current.has(key)) continue;
+          seenEventKeysRef.current.add(key);
+
+          if (ev.kind === "order") {
+            const isDelivery = ev.fulfillmentType === "delivery";
+            const isQr = ev.fulfillmentType === "table";
+            const badge = isDelivery ? "EVE PAKET" : isQr ? "MASAYA QR" : "GEL AL";
+            const tone = isDelivery ? "delivery" : isQr ? "qr" : "pickup";
+            const where = isQr && ev.tableNumber ? ` · Masa ${ev.tableNumber}` : "";
+            fresh.push({
+              key,
+              badge,
+              tone,
+              title: `${ev.orderNumber} — ${ev.customerName}${where}`,
+              subtitle: `${money(ev.totalInKurus)} tutarında yeni sipariş`,
+              createdAt: ev.createdAt,
+              event: ev,
+            });
+          } else {
+            fresh.push({
+              key,
+              badge: "GARSON / MASA",
+              tone: "table",
+              title: `${ev.tableName} — ${ev.actorName}`,
+              subtitle: ev.summary,
+              createdAt: ev.createdAt,
+              event: ev,
+            });
+          }
+        }
+
+        if (fresh.length > 0 && active) {
+          if (soundEnabled) {
+            const hasOrder = fresh.some((t) => t.event.kind === "order");
+            void playCashierAlertSound(hasOrder ? "order" : "table");
+          }
+          setLiveToasts((prev) => [...fresh.reverse(), ...prev].slice(0, 6));
+          if (fresh.some((t) => t.event.kind === "order") && activeView === "orders") {
+            void loadOrders();
+          }
+        }
+      } catch {
+        // Ignore transient poll errors
+      }
+    };
+
+    const timer = window.setInterval(() => void poll(), 4000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [soundEnabled, activeView, loadOrders]);
+
+  function handleOpenLiveToast(toast: LiveToastItem) {
+    setLiveToasts((prev) => prev.filter((item) => item.key !== toast.key));
+    if (toast.event.kind === "order") {
+      setOrderStatus("all");
+      setOrderPage(1);
+      setPendingOrderId(toast.event.orderId);
+      changeAdminView("orders");
+      void loadOrders();
+    } else {
+      setFocusTableId(toast.event.tableId);
+      changeAdminView("tables");
+    }
+  }
 
   const loadCatering = useCallback(async () => {
     setCateringLoading(true);
@@ -998,6 +1127,60 @@ export function AdminDashboard({
     }
   }
 
+  function handleRefundOrder(order: AdminOrder) {
+    requestConfirmation({
+      title: "Para İadesi Yapılsın mı?",
+      description: `“${order.orderNumber}” numaralı sipariş için ${money(order.totalInKurus)} tutarındaki sanal POS ödemesi müşteriye iade edilecek.`,
+      confirmLabel: "İadeyi Onayla",
+      action: async () => {
+        setRefunding(true);
+        try {
+          const response = await fetch(`/api/admin/orders/${order.id}/refund`, {
+            method: "POST",
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || "İade işlemi gerçekleştirilemedi.");
+          }
+          setSelectedOrder((current) =>
+            current?.id === order.id
+              ? {
+                  ...current,
+                  status: "refunded",
+                  paymentStatus: "refunded",
+                  note: current.note
+                    ? `${current.note} | [İADE: ${result.refNo || "Onaylandı"}]`
+                    : `[İADE: ${result.refNo || "Onaylandı"}]`,
+                }
+              : current,
+          );
+          await loadOrders();
+        } finally {
+          setRefunding(false);
+        }
+      },
+    });
+  }
+
+  function handleDeleteOrder(order: AdminOrder) {
+    requestConfirmation({
+      title: "Sipariş Silinsin mi?",
+      description: `“${order.orderNumber}” numaralı sipariş kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      confirmLabel: "Siparişi Sil",
+      action: async () => {
+        const response = await fetch(`/api/admin/orders/${order.id}`, {
+          method: "DELETE",
+        });
+        const result = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) {
+          throw new Error(result.error || "Sipariş silinemedi.");
+        }
+        setSelectedOrder((current) => (current?.id === order.id ? null : current));
+        await loadOrders();
+      },
+    });
+  }
+
   async function updateCateringStatus(request: AdminCateringRequest, nextStatus: Exclude<CateringStatus, "all">) {
     const response = await fetch(`/api/admin/catering/${request.id}`, {
       method: "PATCH",
@@ -1073,15 +1256,40 @@ export function AdminDashboard({
           <button className={activeView === "analytics" ? "is-current" : ""} type="button" onClick={() => changeAdminView("analytics")}><i>01</i><span>İstatistikler</span></button>
           <button className={activeView === "products" ? "is-current" : ""} type="button" onClick={() => changeAdminView("products")}><i>02</i><span>Menü</span></button>
           <button className={activeView === "categories" ? "is-current" : ""} type="button" onClick={() => changeAdminView("categories")}><i>03</i><span>Kategoriler</span></button>
-          <button className={activeView === "orders" ? "is-current" : ""} type="button" onClick={() => changeAdminView("orders")}><i>04</i><span>Siparişler</span></button>
-          <button className={activeView === "messages" ? "is-current" : ""} type="button" onClick={() => changeAdminView("messages")}><i>05</i><span>Mesajlar</span></button>
-          <button className={activeView === "catering" ? "is-current" : ""} type="button" onClick={() => changeAdminView("catering")}><i>06</i><span>Catering</span></button>
-          <button className={activeView === "users" ? "is-current" : ""} type="button" onClick={() => changeAdminView("users")}><i>07</i><span>Kullanıcılar</span></button>
-          <button className={activeView === "notifications" ? "is-current" : ""} type="button" onClick={() => changeAdminView("notifications")}><i>08</i><span>Bildirim Ayarları</span></button>
-          <button type="button" onClick={() => setQrOpen(true)}><i>09</i><span>QR Menü</span></button>
-          <a href="/menu" target="_blank"><i>10</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
-          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>11</i><span>API Dokümantasyonu</span></button>
+          <button className={activeView === "tables" ? "is-current" : ""} type="button" onClick={() => changeAdminView("tables")}><i>04</i><span>Masalar &amp; Kasa</span></button>
+          <button className={activeView === "orders" ? "is-current" : ""} type="button" onClick={() => changeAdminView("orders")}><i>05</i><span>Siparişler</span></button>
+          <button className={activeView === "messages" ? "is-current" : ""} type="button" onClick={() => changeAdminView("messages")}><i>06</i><span>Mesajlar</span></button>
+          <button className={activeView === "catering" ? "is-current" : ""} type="button" onClick={() => changeAdminView("catering")}><i>07</i><span>Catering</span></button>
+          <button className={activeView === "users" ? "is-current" : ""} type="button" onClick={() => changeAdminView("users")}><i>08</i><span>Kullanıcılar</span></button>
+          <button className={activeView === "staff" ? "is-current" : ""} type="button" onClick={() => changeAdminView("staff")}><i>09</i><span>Garson &amp; Komi</span></button>
+          <button className={activeView === "notifications" ? "is-current" : ""} type="button" onClick={() => changeAdminView("notifications")}><i>10</i><span>Bildirim Ayarları</span></button>
+          <button type="button" onClick={() => setQrOpen(true)}><i>11</i><span>QR Menü</span></button>
+          <a href="/menu" target="_blank"><i>12</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
+          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>13</i><span>API Dokümantasyonu</span></button>
         </nav>
+        <div className="admin-sound-bar">
+          <button
+            type="button"
+            className={`admin-sound-toggle ${soundEnabled ? "is-on" : ""}`}
+            onClick={() => {
+              const next = !soundEnabled;
+              setSoundEnabled(next);
+              if (next) void playCashierAlertSound("order");
+            }}
+          >
+            <i className="admin-sound-dot" aria-hidden="true" />
+            <span>Kasa Sesi</span>
+            <small>{soundEnabled ? "Açık" : "Kapalı"}</small>
+          </button>
+          <button
+            type="button"
+            className="admin-sound-test"
+            onClick={() => void playCashierAlertSound("order")}
+            title="Bildirim sesini test et"
+          >
+            Test
+          </button>
+        </div>
         <div className="admin-account">
           <span>{adminName.slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
           <div><strong>{adminEmail}</strong><small>{adminName}</small></div>
@@ -1426,19 +1634,52 @@ export function AdminDashboard({
         )}
       </section> : activeView === "users" ? (
         <AdminUsersPanel currentUserId={adminId} initialUsers={initialUsers} onRequestConfirmation={requestConfirmation} />
+      ) : activeView === "staff" ? (
+        <AdminStaffPanel />
       ) : activeView === "notifications" ? (
         <AdminNotificationSettingsPanel initialSettings={initialNotificationSettings} cronEndpointUrl={dailySummaryCronUrl} />
       ) : activeView === "api-docs" ? (
         <AdminApiDocsPanel baseUrl={apiBaseUrl} />
+      ) : activeView === "tables" ? (
+        <section className="admin-main" id="tables">
+          <header className="admin-topbar">
+            <div>
+              <span className="admin-eyebrow">SALON / KASA &amp; ADİSYON</span>
+              <h1>Masalar &amp;<br /><em>kasa yönetimi.</em></h1>
+            </div>
+            <button
+              type="button"
+              className="admin-primary-button admin-add-button"
+              onClick={() => changeAdminView("orders")}
+            >
+              Online / Gel-Al Siparişler <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
+            </button>
+          </header>
+          <AdminTablesPanel
+            onNavigateToOrders={() => changeAdminView("orders")}
+            onPrintReceiptChange={setPosPrintReceipt}
+            focusTableId={focusTableId}
+            onFocusTableHandled={() => setFocusTableId(null)}
+          />
+        </section>
       ) : <section className="admin-main" id="orders">
         <header className="admin-topbar">
           <div>
             <span className="admin-eyebrow">SİPARİŞ / CANLI AKIŞ</span>
             <h1>Yeni<br /><em>siparişler.</em></h1>
           </div>
-          <Link className="admin-primary-button admin-add-button" href="/menu" target="_blank">
-            Menüyü aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
-          </Link>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              type="button"
+              className="admin-primary-button"
+              onClick={() => changeAdminView("tables")}
+            >
+              Masalar &amp; Kasa
+            </button>
+            <Link className="admin-primary-button admin-add-button" href="/menu" target="_blank">
+              Menüyü aç <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
+            </Link>
+          </div>
         </header>
 
         <div className="admin-stats" aria-label="Sipariş özeti">
@@ -1450,7 +1691,7 @@ export function AdminDashboard({
         <div className="admin-toolbar admin-order-toolbar">
           <p>Masa ve geliş zamanı siparişleri</p>
           <div className="admin-status-filter" role="group" aria-label="Sipariş durumu filtresi">
-            {(["all", "new", "accepted", "preparing", "ready", "completed", "cancelled"] as const).map((item) => (
+            {(["all", "new", "accepted", "preparing", "ready", "completed", "cancelled", "refunded"] as const).map((item) => (
               <button
                 type="button"
                 key={item}
@@ -1477,7 +1718,17 @@ export function AdminDashboard({
           </div>
           {orderData.orders.map((order) => (
             <button className={`admin-order-row status-${order.status}`} type="button" key={order.id} onClick={() => setSelectedOrder(order)}>
-              <span className="admin-order-row-status"><i /><span>{orderStatusLabel(order.status)}</span><strong>{order.orderNumber}</strong></span>
+              <span className="admin-order-row-status">
+                <i />
+                <span>{orderStatusLabel(order.status)}</span>
+                <strong>{order.orderNumber}</strong>
+                {order.paymentStatus === "paid" && (
+                  <small className="admin-order-badge-paid">Ödendi</small>
+                )}
+                {order.paymentStatus === "refunded" && (
+                  <small className="admin-order-badge-refunded">İade Edildi</small>
+                )}
+              </span>
               <span className="admin-order-customer"><i>{order.customerName.slice(0, 1).toLocaleUpperCase("tr-TR")}</i><span><strong>{order.customerName}</strong><small>{order.phone}</small></span></span>
               <span className="admin-order-fulfillment">
                 <strong>{order.fulfillmentType === "table" ? `Masa ${order.tableNumber}` : "Gelip alacak"}</strong>
@@ -1625,8 +1876,62 @@ export function AdminDashboard({
               </div>
 
               <div className="admin-order-delivery-card">
-                <span>{selectedOrder.fulfillmentType === "table" ? "BONJ’DAYIM" : "BONJ’A GELİYORUM"}</span>
+                <span>{selectedOrder.fulfillmentType === "table" ? "BONJ’DAYIM" : selectedOrder.fulfillmentType === "delivery" ? "ADRESE TESLİMAT" : "BONJ’A GELİYORUM"}</span>
                 <strong>{selectedOrder.fulfillmentType === "table" ? `Masa ${selectedOrder.tableNumber}` : selectedOrder.pickupAt ? messageDate(selectedOrder.pickupAt) : "Saat belirtilmedi"}</strong>
+              </div>
+
+              <div className="admin-order-payment-card">
+                <div className="admin-order-payment-header">
+                  <div className="admin-order-payment-title">
+                    <span>Sanal POS Ödemesi</span>
+                  </div>
+
+                  {selectedOrder.paymentStatus === "paid" ? (
+                    <span className="admin-order-payment-badge is-paid">
+                      <i /> Ödendi
+                    </span>
+                  ) : selectedOrder.paymentStatus === "refunded" ? (
+                    <span className="admin-order-payment-badge is-refunded">
+                      <i /> İade Edildi
+                    </span>
+                  ) : (
+                    <span className="admin-order-payment-badge is-pending">
+                      <i /> {selectedOrder.paymentStatus || "Bekliyor"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="admin-order-payment-grid">
+                  <div className="admin-order-payment-item">
+                    <span>Tutar</span>
+                    <strong>{money(selectedOrder.totalInKurus)}</strong>
+                  </div>
+                  <div className="admin-order-payment-item">
+                    <span>İşlem Referansı</span>
+                    <code>{selectedOrder.transactionId || "—"}</code>
+                  </div>
+                </div>
+
+                {selectedOrder.paymentStatus === "paid" && (
+                  <div className="admin-order-payment-footer">
+                    <button
+                      type="button"
+                      className="admin-order-refund-btn"
+                      onClick={() => handleRefundOrder(selectedOrder)}
+                      disabled={refunding}
+                    >
+                      <span>{refunding ? "İşleniyor…" : "İade Yap"}</span>
+                    </button>
+                  </div>
+                )}
+
+                {selectedOrder.paymentStatus === "refunded" && (
+                  <div className="admin-order-payment-footer">
+                    <span className="admin-order-refunded-notice">
+                      Bu siparişin toplam tutarı ({money(selectedOrder.totalInKurus)}) iade edilmiştir.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="admin-order-detail-items">
@@ -1645,17 +1950,109 @@ export function AdminDashboard({
             </div>
             <footer>
               <div className="admin-order-state-picker" role="group" aria-label="Sipariş durumu">
-                {(["new", "accepted", "preparing", "ready", "completed", "cancelled"] as const).map((item) => (
+                {(["new", "accepted", "preparing", "ready", "completed", "cancelled", "refunded"] as const).map((item) => (
                   <button className={selectedOrder.status === item ? "is-current" : ""} type="button" key={item} onClick={() => updateOrderStatus(selectedOrder, item)}>{orderStatusLabel(item)}</button>
                 ))}
               </div>
               <div className="admin-order-detail-actions">
                 <button type="button" onClick={() => window.print()}>Yazdır <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span></button>
                 <a href={`tel:${selectedOrder.phone}`}>Ara <span><UiIcon name="arrow-up-right" /></span></a>
+                <button type="button" className="is-danger" onClick={() => handleDeleteOrder(selectedOrder)}>Sil <span aria-hidden="true"><UiIcon name="close" /></span></button>
               </div>
             </footer>
           </aside>
         </div>
+      )}
+
+      {liveToasts.length > 0 && (
+        <div className="admin-live-toasts" role="region" aria-label="Canlı sipariş bildirimleri">
+          {liveToasts.map((toast) => (
+            <div key={toast.key} className={`admin-live-toast is-${toast.tone}`}>
+              <button
+                type="button"
+                className="admin-live-toast-body"
+                onClick={() => handleOpenLiveToast(toast)}
+              >
+                <span className="admin-live-toast-badge">{toast.badge}</span>
+                <strong>{toast.title}</strong>
+                <small>{toast.subtitle}</small>
+                <em>Detayları görmek için tıklayın →</em>
+              </button>
+              <button
+                type="button"
+                className="admin-live-toast-close"
+                aria-label="Bildirimi kapat"
+                onClick={() => setLiveToasts((prev) => prev.filter((t) => t.key !== toast.key))}
+              >
+                <UiIcon name="close" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {posPrintReceipt && activeView === "tables" && (
+        <section className="admin-order-print">
+          <header>
+            <div><BrandLogo className="admin-print-logo" /></div>
+            <p>MASA ADİSYON FİŞİ</p>
+          </header>
+          <div className="admin-order-print-code">
+            <span>{posPrintReceipt.tableZone}</span>
+            <strong>{posPrintReceipt.tableName}</strong>
+            <time>{messageDate(posPrintReceipt.closedAt ?? posPrintReceipt.openedAt)}</time>
+          </div>
+          <dl>
+            <div><dt>Kişi</dt><dd>{posPrintReceipt.guestCount}</dd></div>
+            {posPrintReceipt.customerName && (
+              <div><dt>Müşteri</dt><dd>{posPrintReceipt.customerName}</dd></div>
+            )}
+            <div><dt>Ödeme</dt><dd>{posPaymentLabel(posPrintReceipt.paymentMethod)}</dd></div>
+          </dl>
+          <table>
+            <thead>
+              <tr>
+                <th>Adet</th>
+                <th>Ürün</th>
+                <th>Tutar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {posPrintReceipt.items.map((item, idx) => (
+                <tr key={idx}>
+                  <td>{item.quantity}×</td>
+                  <td>
+                    {item.productName}
+                    <small>{money(item.unitPriceInKurus)} / adet</small>
+                  </td>
+                  <td>{money(item.lineTotalInKurus)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              {posPrintReceipt.discountInKurus > 0 && (
+                <tr>
+                  <th colSpan={2}>İndirim</th>
+                  <td>−{money(posPrintReceipt.discountInKurus)}</td>
+                </tr>
+              )}
+              <tr>
+                <th colSpan={2}>Toplam</th>
+                <td><strong>{money(posPrintReceipt.totalInKurus)}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+          {posPrintReceipt.note && (
+            <div className="admin-order-print-note">
+              <span>Not</span>
+              <p>{posPrintReceipt.note}</p>
+            </div>
+          )}
+          <footer>
+            <small>Bonj Cake Story</small>
+            <small>Afiyet olsun</small>
+          </footer>
+        </section>
       )}
 
       {selectedOrder && (

@@ -7,10 +7,12 @@ import { UiIcon } from "../components/UiIcon";
 
 const periodLabels: Record<AnalyticsPeriod, string> = {
   today: "Bugün",
-  "3d": "3 gün",
-  "7d": "7 gün",
-  "30d": "30 gün",
-  "90d": "90 gün",
+  "3d": "3 Gün",
+  "7d": "Haftalık",
+  "30d": "Aylık",
+  "90d": "3 Aylık",
+  "180d": "6 Aylık",
+  "365d": "Yıllık",
 };
 
 function number(value: number) {
@@ -97,7 +99,11 @@ function OrderChart({ rows }: { rows: AdminAnalyticsData["orderTimeline"] }) {
     <div className="admin-order-chart" role="img" aria-label="Zamana göre sipariş cirosu grafiği">
       <div className="admin-order-chart-bars">
         {rows.map((row) => (
-          <span key={row.date} title={`${shortDate(row.date)} · ${row.orders} sipariş · ${money(row.revenueInKurus)}`} style={{ "--bar": `${Math.max(row.revenueInKurus ? 4 : 0, (row.revenueInKurus / max) * 100)}%` } as React.CSSProperties}>
+          <span
+            key={row.date}
+            title={`${shortDate(row.date)} · ${row.orders} sipariş · ${money(row.revenueInKurus)} (Masa Kasa: ${row.posTableOrders}, QR: ${row.qrTableOrders}, Paket: ${row.deliveryOrders}, Gel Al: ${row.pickupOrders})`}
+            style={{ "--bar": `${Math.max(row.revenueInKurus ? 4 : 0, (row.revenueInKurus / max) * 100)}%` } as React.CSSProperties}
+          >
             <i />
           </span>
         ))}
@@ -193,6 +199,16 @@ export function AdminAnalyticsPanel() {
 
   const totalDeviceVisits = useMemo(() => data?.devices.reduce((total, item) => total + item.visits, 0) ?? 0, [data]);
   const totalSourceVisits = useMemo(() => data?.sources.reduce((total, item) => total + item.visits, 0) ?? 0, [data]);
+  const [productQuery, setProductQuery] = useState("");
+  const filteredTopProducts = useMemo(() => {
+    const list = data?.topProducts ?? [];
+    const q = productQuery.trim().toLowerCase();
+    return q ? list.filter((p) => p.productName.toLowerCase().includes(q)) : list;
+  }, [data?.topProducts, productQuery]);
+  const maxProductQty = useMemo(
+    () => Math.max(1, ...(data?.topProducts ?? []).map((p) => p.quantity)),
+    [data?.topProducts],
+  );
 
   return (
     <section className="admin-main admin-analytics-main" id="analytics">
@@ -236,11 +252,31 @@ export function AdminAnalyticsPanel() {
             </article>
 
             <div className="admin-analytics-commerce-kpis">
-              <AnalyticsKpi label="Sipariş cirosu" value={money(data.commerce.revenueInKurus)} detail={`${data.commerce.orders} sipariş · Ort. ${money(data.commerce.averageOrderInKurus)}`} tone="dark" />
-              <AnalyticsKpi label="Sipariş oranı" value={`%${data.commerce.visitToOrderRate}`} detail="Ziyaret / sipariş karşılaştırması" />
+              <AnalyticsKpi label="Toplam sipariş cirosu" value={money(data.commerce.revenueInKurus)} detail={`${data.commerce.orders} sipariş · Ort. ${money(data.commerce.averageOrderInKurus)}`} tone="dark" />
+              <AnalyticsKpi label="Online sipariş oranı" value={`%${data.commerce.visitToOrderRate}`} detail={`${data.commerce.onlineOrders} online · ${data.commerce.posTableOrders} masa kasa`} />
               <AnalyticsKpi label="Form mesajı" value={number(data.commerce.messages)} detail="İletişim formundan gelen" />
               <AnalyticsKpi label="Catering talebi" value={number(data.commerce.cateringRequests)} detail="Organizasyon ön görüşmesi" tone="berry" />
             </div>
+
+            <article className="admin-analytics-panel">
+              <header>
+                <div><span>SİPARİŞ KANALLARI</span><h2>Masa, QR, Eve Paket &amp; Gel Al dağılımı</h2></div>
+                <strong>{number(data.commerce.orders)}<small>toplam sipariş</small></strong>
+              </header>
+              <div className="admin-analytics-channels-grid">
+                {data.orderChannels.map((ch) => {
+                  const pct = data.commerce.orders ? Math.round((ch.orders / data.commerce.orders) * 100) : 0;
+                  return (
+                    <div key={ch.channel} className="admin-analytics-channel-card">
+                      <span>{ch.label}</span>
+                      <strong>{number(ch.orders)} <small>sipariş (%{pct})</small></strong>
+                      <b>{money(ch.revenueInKurus)}</b>
+                      <i><em style={{ width: `${pct}%` }} /></i>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
 
             <article className="admin-analytics-panel admin-revenue-panel">
               <header>
@@ -248,6 +284,39 @@ export function AdminAnalyticsPanel() {
                 <strong>{money(data.commerce.revenueInKurus)}<small>{data.commerce.orders} sipariş</small></strong>
               </header>
               <OrderChart rows={data.orderTimeline} />
+            </article>
+
+            <article className="admin-analytics-panel">
+              <header className="admin-top-products-head">
+                <div><span>ÜRÜN PERFORMANSI</span><h2>En çok sipariş edilen ürünler</h2></div>
+                <input
+                  type="search"
+                  className="admin-top-products-search"
+                  placeholder="Ürün ara…"
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                />
+              </header>
+              <div className="admin-analytics-table admin-top-products-table">
+                <div className="admin-analytics-table-head">
+                  <span>Ürün</span>
+                  <span>Toplam Adet</span>
+                  <span>Masa / Online</span>
+                  <span>Ciro</span>
+                </div>
+                {filteredTopProducts.map((item, idx) => (
+                  <div key={item.productName}>
+                    <strong>
+                      <em className="admin-product-rank">{idx + 1}.</em> {item.productName}
+                      <i className="admin-product-bar"><b style={{ width: `${(item.quantity / maxProductQty) * 100}%` }} /></i>
+                    </strong>
+                    <span><strong>{number(item.quantity)}</strong> adet</span>
+                    <span>{number(item.posQuantity)} / {number(item.onlineQuantity)}</span>
+                    <span><strong>{money(item.revenueInKurus)}</strong></span>
+                  </div>
+                ))}
+                {!filteredTopProducts.length && <p>Bu dönemde ürün siparişi bulunamadı.</p>}
+              </div>
             </article>
 
             <div className="admin-analytics-grid-two">

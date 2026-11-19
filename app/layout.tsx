@@ -7,6 +7,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import "./globals.css";
 import "./theme.css";
+import "./membership.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

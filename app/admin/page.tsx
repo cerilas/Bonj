@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const adminViews = new Set<AdminView>(["analytics", "products", "categories", "orders", "messages", "catering", "users", "notifications", "api-docs"]);
+const adminViews = new Set<AdminView>(["analytics", "products", "categories", "tables", "orders", "messages", "catering", "users", "staff", "notifications", "api-docs"]);
 
 export default async function AdminPage({
   searchParams,

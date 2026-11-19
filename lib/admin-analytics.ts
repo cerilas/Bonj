@@ -3,7 +3,24 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 
-export type AnalyticsPeriod = "today" | "3d" | "7d" | "30d" | "90d";
+export type AnalyticsPeriod = "today" | "3d" | "7d" | "30d" | "90d" | "180d" | "365d";
+
+export type OrderChannelKey = "pos_table" | "qr_table" | "delivery" | "pickup";
+
+export type OrderChannelBreakdown = {
+  channel: OrderChannelKey;
+  label: string;
+  orders: number;
+  revenueInKurus: number;
+};
+
+export type TopProductStat = {
+  productName: string;
+  quantity: number;
+  revenueInKurus: number;
+  posQuantity: number;
+  onlineQuantity: number;
+};
 
 export type AdminAnalyticsData = {
   period: AnalyticsPeriod;
@@ -20,10 +37,16 @@ export type AdminAnalyticsData = {
     orders: number;
     revenueInKurus: number;
     averageOrderInKurus: number;
+    onlineOrders: number;
+    onlineRevenueInKurus: number;
+    posTableOrders: number;
+    posTableRevenueInKurus: number;
     messages: number;
     cateringRequests: number;
     visitToOrderRate: number;
   };
+  orderChannels: OrderChannelBreakdown[];
+  topProducts: TopProductStat[];
   timeline: Array<{
     date: string;
     visits: number;
@@ -34,6 +57,10 @@ export type AdminAnalyticsData = {
     date: string;
     orders: number;
     revenueInKurus: number;
+    posTableOrders: number;
+    qrTableOrders: number;
+    deliveryOrders: number;
+    pickupOrders: number;
   }>;
   locations: Array<{
     country: string;
@@ -81,6 +108,8 @@ function daysFor(period: AnalyticsPeriod) {
   if (period === "3d") return 3;
   if (period === "7d") return 7;
   if (period === "90d") return 90;
+  if (period === "180d") return 180;
+  if (period === "365d") return 365;
   return 30;
 }
 
@@ -105,20 +134,34 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       from analytics_sessions
       where started_at >= ${fromIso}::timestamptz
     `);
-  const commerceResult = await db.execute(sql`
+
+  const onlineChannelsResult = await db.execute(sql`
       select
+        fulfillment_type as channel,
         count(*)::int as orders,
-        coalesce(sum(total_in_kurus), 0)::bigint as revenue_in_kurus,
-        coalesce(round(avg(total_in_kurus)), 0)::int as average_order_in_kurus
+        coalesce(sum(total_in_kurus), 0)::bigint as revenue_in_kurus
       from orders
       where created_at >= ${fromIso}::timestamptz
+        and status not in ('cancelled', 'refunded')
+      group by 1
     `);
+
+  const posTableSummaryResult = await db.execute(sql`
+      select
+        count(*)::int as orders,
+        coalesce(sum(paid_cash_in_kurus + paid_card_in_kurus), 0)::bigint as revenue_in_kurus
+      from table_sessions
+      where opened_at >= ${fromIso}::timestamptz
+        and status = 'closed'
+    `);
+
   const messagesResult = await db.execute(
     sql`select count(*)::int as total from contact_messages where created_at >= ${fromIso}::timestamptz`,
   );
   const cateringResult = await db.execute(
     sql`select count(*)::int as total from catering_requests where created_at >= ${fromIso}::timestamptz`,
   );
+
   const timelineResult = await db.execute(sql`
       select
         to_char((started_at at time zone 'Europe/Istanbul')::date, 'YYYY-MM-DD') as day,
@@ -130,16 +173,69 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       group by 1
       order by 1
     `);
+
   const orderTimelineResult = await db.execute(sql`
       select
         to_char((created_at at time zone 'Europe/Istanbul')::date, 'YYYY-MM-DD') as day,
         count(*)::int as orders,
-        coalesce(sum(total_in_kurus), 0)::bigint as revenue_in_kurus
+        coalesce(sum(total_in_kurus), 0)::bigint as revenue_in_kurus,
+        count(*) filter (where fulfillment_type = 'table')::int as qr_table_orders,
+        count(*) filter (where fulfillment_type = 'delivery')::int as delivery_orders,
+        count(*) filter (where fulfillment_type = 'pickup')::int as pickup_orders
       from orders
       where created_at >= ${fromIso}::timestamptz
+        and status not in ('cancelled', 'refunded')
       group by 1
       order by 1
     `);
+
+  const posTimelineResult = await db.execute(sql`
+      select
+        to_char((opened_at at time zone 'Europe/Istanbul')::date, 'YYYY-MM-DD') as day,
+        count(*)::int as orders,
+        coalesce(sum(paid_cash_in_kurus + paid_card_in_kurus), 0)::bigint as revenue_in_kurus
+      from table_sessions
+      where opened_at >= ${fromIso}::timestamptz
+        and status = 'closed'
+      group by 1
+      order by 1
+    `);
+
+  const topProductsResult = await db.execute(sql`
+      with combined as (
+        select
+          oi.product_name as product_name,
+          oi.quantity as quantity,
+          oi.line_total_in_kurus as revenue_in_kurus,
+          0 as pos_quantity,
+          oi.quantity as online_quantity
+        from order_items oi
+        inner join orders o on o.id = oi.order_id
+        where o.created_at >= ${fromIso}::timestamptz
+          and o.status not in ('cancelled', 'refunded')
+        union all
+        select
+          tsi.product_name as product_name,
+          tsi.quantity as quantity,
+          (tsi.unit_price_in_kurus * tsi.quantity) as revenue_in_kurus,
+          tsi.quantity as pos_quantity,
+          0 as online_quantity
+        from table_session_items tsi
+        inner join table_sessions ts on ts.id = tsi.session_id
+        where ts.opened_at >= ${fromIso}::timestamptz
+      )
+      select
+        product_name,
+        coalesce(sum(quantity), 0)::int as quantity,
+        coalesce(sum(revenue_in_kurus), 0)::bigint as revenue_in_kurus,
+        coalesce(sum(pos_quantity), 0)::int as pos_quantity,
+        coalesce(sum(online_quantity), 0)::int as online_quantity
+      from combined
+      group by product_name
+      order by quantity desc, revenue_in_kurus desc
+      limit 25
+    `);
+
   const locationsResult = await db.execute(sql`
       select
         coalesce(country, '—') as country,
@@ -182,16 +278,66 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
     `);
 
   const overviewRow = rowsFrom<Row>(overviewResult)[0] ?? {};
-  const commerceRow = rowsFrom<Row>(commerceResult)[0] ?? {};
   const messagesRow = rowsFrom<Row>(messagesResult)[0] ?? {};
   const cateringRow = rowsFrom<Row>(cateringResult)[0] ?? {};
+  const posRow = rowsFrom<Row>(posTableSummaryResult)[0] ?? {};
+
+  const channelMap = new Map<string, { orders: number; revenueInKurus: number }>();
+  for (const row of rowsFrom<Row>(onlineChannelsResult)) {
+    channelMap.set(String(row.channel ?? ""), {
+      orders: numberValue(row.orders),
+      revenueInKurus: numberValue(row.revenue_in_kurus),
+    });
+  }
+
+  const posTableOrders = numberValue(posRow.orders);
+  const posTableRevenueInKurus = numberValue(posRow.revenue_in_kurus);
+  const qrStats = channelMap.get("table") ?? { orders: 0, revenueInKurus: 0 };
+  const deliveryStats = channelMap.get("delivery") ?? { orders: 0, revenueInKurus: 0 };
+  const pickupStats = channelMap.get("pickup") ?? { orders: 0, revenueInKurus: 0 };
+
+  const onlineOrders = qrStats.orders + deliveryStats.orders + pickupStats.orders;
+  const onlineRevenueInKurus =
+    qrStats.revenueInKurus + deliveryStats.revenueInKurus + pickupStats.revenueInKurus;
+
+  const totalOrders = onlineOrders + posTableOrders;
+  const totalRevenueInKurus = onlineRevenueInKurus + posTableRevenueInKurus;
   const visits = numberValue(overviewRow.visits);
-  const orders = numberValue(commerceRow.orders);
+
+  const orderChannels: OrderChannelBreakdown[] = [
+    {
+      channel: "pos_table",
+      label: "Masa Siparişleri (Kasa)",
+      orders: posTableOrders,
+      revenueInKurus: posTableRevenueInKurus,
+    },
+    {
+      channel: "qr_table",
+      label: "Masaya QR Siparişler",
+      orders: qrStats.orders,
+      revenueInKurus: qrStats.revenueInKurus,
+    },
+    {
+      channel: "delivery",
+      label: "Eve Paket Siparişler",
+      orders: deliveryStats.orders,
+      revenueInKurus: deliveryStats.revenueInKurus,
+    },
+    {
+      channel: "pickup",
+      label: "Gel Al Siparişler",
+      orders: pickupStats.orders,
+      revenueInKurus: pickupStats.revenueInKurus,
+    },
+  ];
 
   const timelineRows = rowsFrom<Row>(timelineResult);
   const timelineByDay = new Map(timelineRows.map((row) => [String(row.day), row]));
   const orderRows = rowsFrom<Row>(orderTimelineResult);
   const ordersByDay = new Map(orderRows.map((row) => [String(row.day), row]));
+  const posRows = rowsFrom<Row>(posTimelineResult);
+  const posByDay = new Map(posRows.map((row) => [String(row.day), row]));
+
   const dayKeys = Array.from({ length: dayCount }, (_, index) => {
     const date = new Date(from);
     date.setDate(from.getDate() + index);
@@ -210,13 +356,25 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       mobileShare: numberValue(overviewRow.mobile_share),
     },
     commerce: {
-      orders,
-      revenueInKurus: numberValue(commerceRow.revenue_in_kurus),
-      averageOrderInKurus: numberValue(commerceRow.average_order_in_kurus),
+      orders: totalOrders,
+      revenueInKurus: totalRevenueInKurus,
+      averageOrderInKurus: totalOrders ? Math.round(totalRevenueInKurus / totalOrders) : 0,
+      onlineOrders,
+      onlineRevenueInKurus,
+      posTableOrders,
+      posTableRevenueInKurus,
       messages: numberValue(messagesRow.total),
       cateringRequests: numberValue(cateringRow.total),
-      visitToOrderRate: visits ? Math.round((orders / visits) * 10_000) / 100 : 0,
+      visitToOrderRate: visits ? Math.round((onlineOrders / visits) * 10_000) / 100 : 0,
     },
+    orderChannels,
+    topProducts: rowsFrom<Row>(topProductsResult).map((row) => ({
+      productName: String(row.product_name),
+      quantity: numberValue(row.quantity),
+      revenueInKurus: numberValue(row.revenue_in_kurus),
+      posQuantity: numberValue(row.pos_quantity),
+      onlineQuantity: numberValue(row.online_quantity),
+    })),
     timeline: dayKeys.map((date) => {
       const row = timelineByDay.get(date) ?? {};
       return {
@@ -227,11 +385,20 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       };
     }),
     orderTimeline: dayKeys.map((date) => {
-      const row = ordersByDay.get(date) ?? {};
+      const oRow = ordersByDay.get(date) ?? {};
+      const pRow = posByDay.get(date) ?? {};
+      const qrTableOrders = numberValue(oRow.qr_table_orders);
+      const deliveryOrders = numberValue(oRow.delivery_orders);
+      const pickupOrders = numberValue(oRow.pickup_orders);
+      const posOrders = numberValue(pRow.orders);
       return {
         date,
-        orders: numberValue(row.orders),
-        revenueInKurus: numberValue(row.revenue_in_kurus),
+        orders: numberValue(oRow.orders) + posOrders,
+        revenueInKurus: numberValue(oRow.revenue_in_kurus) + numberValue(pRow.revenue_in_kurus),
+        posTableOrders: posOrders,
+        qrTableOrders,
+        deliveryOrders,
+        pickupOrders,
       };
     }),
     locations: rowsFrom<Row>(locationsResult).map((row) => ({

@@ -707,6 +707,7 @@
 .status-accepted .admin-order-row-status > i { background: #d38b35; }
 .status-ready .admin-order-row-status > i { background: #779741; box-shadow: 0 0 0 4px rgba(119, 151, 65, 0.1); }
 .status-cancelled .admin-order-row-status > i { background: #8e8588; }
+.status-refunded .admin-order-row-status > i { background: #a91940; box-shadow: 0 0 0 4px rgba(169, 25, 64, 0.12); }
 .admin-order-row-status > span { color: rgba(23, 17, 20, 0.5); font-size: 7px; font-weight: 900; text-transform: uppercase; }
 .admin-order-row-status > strong { grid-column: 2; overflow: hidden; color: #8d1434; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .admin-order-customer { min-width: 0; display: flex; align-items: center; gap: 11px; }
