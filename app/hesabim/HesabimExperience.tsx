@@ -111,7 +111,8 @@ function orderStatusBadge(status: string) {
   }
 }
 
-export function HesabimExperience() {
+export function HesabimExperience({ googleMapsApiKey = "" }: { googleMapsApiKey?: string }) {
+  const mapsApiKey = googleMapsApiKey || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const { user, isLoggedIn, isLoading: authLoading, logout, refreshUser } = useUser();
   const router = useRouter();
 
@@ -880,7 +881,7 @@ export function HesabimExperience() {
                   </button>
                 </div>
 
-                {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                {mapsApiKey ? (
                   <div className="bonj-modal-map-wrap">
                     {isLocating && (
                       <div className="bonj-map-locating-overlay">
@@ -888,7 +889,7 @@ export function HesabimExperience() {
                         <span>Mevcut GPS konumunuz tespit ediliyor…</span>
                       </div>
                     )}
-                    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}>
+                    <APIProvider apiKey={mapsApiKey}>
                       <Map
                         defaultCenter={addrPin || GAZIANTEP_CENTER}
                         defaultZoom={16}

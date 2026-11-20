@@ -35,7 +35,8 @@ function localDateTimeValue(date: Date) {
     .slice(0, 16);
 }
 
-export function CartExperience() {
+export function CartExperience({ googleMapsApiKey = "" }: { googleMapsApiKey?: string }) {
+  const mapsApiKey = googleMapsApiKey || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const { items, ready, count, totalInKurus, setQuantity, clearCart } = useCart();
   const [fulfillment, setFulfillment] = useState<Fulfillment>("table");
   const [sending, setSending] = useState(false);
@@ -491,7 +492,7 @@ export function CartExperience() {
                     </div>
                   )}
                   <span className="cart-field-label">Açık Adresin *</span>
-                  {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                  {mapsApiKey ? (
                     <div
                       style={{ height: '240px', width: '100%', borderRadius: '8px', overflow: 'hidden', marginBottom: '0.5rem', position: 'relative' }}
                       onClick={(e) => e.stopPropagation()}
@@ -502,7 +503,7 @@ export function CartExperience() {
                           <span style={{ fontWeight: '500', color: '#000', fontSize: '12px', textTransform: 'none', letterSpacing: 0 }}>Konumunuz bulunuyor...</span>
                         </div>
                       )}
-                      <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}>
+                      <APIProvider apiKey={mapsApiKey}>
                         <Map
                           defaultCenter={mapCenter}
                           defaultZoom={15}
