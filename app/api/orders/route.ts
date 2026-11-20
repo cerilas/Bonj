@@ -164,6 +164,13 @@ export async function POST(request: Request) {
       ? rawAddressId
       : null;
 
+    if (!isTestOrder && !payment) {
+      return NextResponse.json(
+        { error: "Lütfen kredi kartı bilgilerinizi eksiksiz girin." },
+        { status: 400 },
+      );
+    }
+
     const orderNumber = createOrderNumber();
     const savedOrder = await db.transaction(async (tx) => {
       const [created] = await tx
@@ -180,7 +187,7 @@ export async function POST(request: Request) {
           address: fulfillmentType === "delivery" ? address : null,
           note: note || (isTestOrder ? "TEST SİPARİŞİ" : null),
           totalInKurus,
-          status: "new",
+          status: isTestOrder ? "new" : "awaiting_payment",
           paymentStatus: isTestOrder ? "paid" : "pending",
           transactionId: isTestOrder ? "TEST-SIMULATION" : null,
         })
@@ -202,34 +209,30 @@ export async function POST(request: Request) {
       return created;
     });
 
-    const fulfillment = fulfillmentType === "table"
-      ? `Masa ${tableNumber}`
-      : fulfillmentType === "delivery"
-      ? `Teslimat (${address.slice(0, 30)})`
-      : `Gel-al ${pickupAt ? pickupTime(pickupAt) : ""}`;
-    const itemCount = [...quantityById.values()].reduce((total, quantity) => total + quantity, 0);
-    after(async () => {
-      try {
-        await sendConfiguredAdminNotification({
-          type: "orders",
-          request,
-          itemId: savedOrder.id,
-          message: `BONJ | ${isTestOrder ? "[TEST] " : ""}Yeni sipariş ${savedOrder.orderNumber}. ${customerName}, ${fulfillment}, ${itemCount} ürün, ${money(totalInKurus)}.`,
-        });
-      } catch (error) {
-        reportNotificationError("orders", error);
-      }
-    });
-
     if (isTestOrder) {
+      const fulfillment = fulfillmentType === "table"
+        ? `Masa ${tableNumber}`
+        : fulfillmentType === "delivery"
+        ? `Teslimat (${address.slice(0, 30)})`
+        : `Gel-al ${pickupAt ? pickupTime(pickupAt) : ""}`;
+      const itemCount = [...quantityById.values()].reduce((total, quantity) => total + quantity, 0);
+      after(async () => {
+        try {
+          await sendConfiguredAdminNotification({
+            type: "orders",
+            request,
+            itemId: savedOrder.id,
+            message: `BONJ | [TEST] Yeni sipariş ${savedOrder.orderNumber}. ${customerName}, ${fulfillment}, ${itemCount} ürün, ${money(totalInKurus)}.`,
+          });
+        } catch (error) {
+          reportNotificationError("orders", error);
+        }
+      });
+
       return NextResponse.json(
         { ok: true, orderNumber: savedOrder.orderNumber, totalInKurus, isTestOrder: true },
         { status: 201 },
       );
-    }
-
-    if (!payment) {
-      throw new Error("Lütfen kredi kartı bilgilerinizi eksiksiz girin.");
     }
 
     const siteUrl = notificationBaseUrl(request);
@@ -238,105 +241,109 @@ export async function POST(request: Request) {
     const cancelUrl = `${siteUrl}/api/payment/callback`;
 
     // Process payment via HalkÖde
-    const token = await getHalkodeToken();
-    const hashKey = generateHalkodeHash(
-      totalInKurus / 100, // API expects double like 22.00
-      1, // Single installment for now
-      "TRY",
-      savedOrder.orderNumber,
-    );
+    try {
+      const token = await getHalkodeToken();
+      const hashKey = generateHalkodeHash(
+        totalInKurus / 100, // API expects double like 22.00
+        1, // Single installment for now
+        "TRY",
+        savedOrder.orderNumber,
+      );
 
-    const paymentResponse = await fetch(getHalkode3dPayUrl(), {
-      method: "POST",
-      redirect: "manual",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        cc_holder_name: payment.ccHolderName,
-        cc_no: (payment.ccNo || "").replace(/\s+/g, ""),
-        expiry_month: (payment.ccExpiryMonth || "").padStart(2, "0"),
-        expiry_year: (payment.ccExpiryYear || "").length === 2 ? `20${payment.ccExpiryYear}` : (payment.ccExpiryYear || ""),
-        cvv: payment.ccCvv,
-        currency_code: "TRY",
-        installments_number: 1,
-        invoice_id: savedOrder.orderNumber,
-        invoice_description: `Bonj Siparişi: ${savedOrder.orderNumber}`,
-        total: totalInKurus / 100,
-        merchant_key: getHalkodeMerchantKey(),
-        items: [
-          {
-            name: "Bonj Siparişi",
-            price: totalInKurus / 100,
-            quantity: 1,
-            description: `Müşteri: ${customerName}`,
-          },
-        ],
-        name: customerName.split(" ")[0],
-        surname: customerName.split(" ").slice(1).join(" ") || "Bilinmiyor",
-        hash_key: hashKey,
-        return_url: returnUrl,
-        cancel_url: cancelUrl,
-        payment_completed_by: "app",
-        transaction_type: "Auth",
-      }),
-    });
+      const paymentResponse = await fetch(getHalkode3dPayUrl(), {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cc_holder_name: payment!.ccHolderName,
+          cc_no: (payment!.ccNo || "").replace(/\s+/g, ""),
+          expiry_month: (payment!.ccExpiryMonth || "").padStart(2, "0"),
+          expiry_year: (payment!.ccExpiryYear || "").length === 2 ? `20${payment!.ccExpiryYear}` : (payment!.ccExpiryYear || ""),
+          cvv: payment!.ccCvv,
+          currency_code: "TRY",
+          installments_number: 1,
+          invoice_id: savedOrder.orderNumber,
+          invoice_description: `Bonj Siparişi: ${savedOrder.orderNumber}`,
+          total: totalInKurus / 100,
+          merchant_key: getHalkodeMerchantKey(),
+          items: [
+            {
+              name: "Bonj Siparişi",
+              price: totalInKurus / 100,
+              quantity: 1,
+              description: `Müşteri: ${customerName}`,
+            },
+          ],
+          name: customerName.split(" ")[0],
+          surname: customerName.split(" ").slice(1).join(" ") || "Bilinmiyor",
+          hash_key: hashKey,
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
+          payment_completed_by: "app",
+          transaction_type: "Auth",
+        }),
+      });
 
-    const location = paymentResponse.headers.get("location");
-    if (location) {
-      const redirectUrl = new URL(location, siteUrl);
-      const statusCode = redirectUrl.searchParams.get("status_code") || redirectUrl.searchParams.get("error_code");
-      const statusDesc = redirectUrl.searchParams.get("status_description") || redirectUrl.searchParams.get("error");
+      const location = paymentResponse.headers.get("location");
+      if (location) {
+        const redirectUrl = new URL(location, siteUrl);
+        const statusCode = redirectUrl.searchParams.get("status_code") || redirectUrl.searchParams.get("error_code");
+        const statusDesc = redirectUrl.searchParams.get("status_description") || redirectUrl.searchParams.get("error");
 
-      if (statusCode && statusCode !== "100") {
-        await db.update(orders).set({ paymentStatus: "failed" }).where(eq(orders.id, savedOrder.id));
-        throw new Error(`Ödeme hatası: ${statusDesc || "İşlem banka tarafından reddedildi."}`);
+        if (statusCode && statusCode !== "100") {
+          throw new Error(`Ödeme hatası: ${statusDesc || "İşlem banka tarafından reddedildi."}`);
+        }
+
+        return NextResponse.json(
+          { ok: true, orderNumber: savedOrder.orderNumber, totalInKurus, redirectUrl: location },
+          { status: 201 },
+        );
+      }
+
+      const paymentHtml = await paymentResponse.text();
+
+      if (paymentHtml.trim().startsWith("{")) {
+        try {
+          const json = JSON.parse(paymentHtml);
+          if (json.status_code && json.status_code !== 100) {
+            throw new Error(`Ödeme hatası: ${json.status_description || "İşlem reddedildi"}`);
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.startsWith("Ödeme hatası")) {
+            throw e;
+          }
+          // ignore parse error
+        }
+      }
+
+      if (!paymentResponse.ok) {
+        console.error("HalkÖde response:", paymentHtml);
+        throw new Error("Ödeme sistemiyle iletişim kurulamadı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.");
+      }
+
+      // HalkÖde wraps the form with action=".../redirect-to-bank" and relies on window.onload to change action to bank_url.
+      // Replace action with bank_url directly to avoid Laravel CSRF token expiration errors when client-side script execution is bypassed.
+      let sanitizedPaymentHtml = paymentHtml;
+      const bankUrlMatch = paymentHtml.match(/name=['"]?bank_url['"]?\s+value=['"]?([^'"\s>]+)['"]?/i);
+      if (bankUrlMatch && bankUrlMatch[1]) {
+        sanitizedPaymentHtml = paymentHtml.replace(
+          /action=['"][^'"]*redirect-to-bank['"]/i,
+          `action="${bankUrlMatch[1]}"`
+        );
       }
 
       return NextResponse.json(
-        { ok: true, orderNumber: savedOrder.orderNumber, totalInKurus, redirectUrl: location },
+        { ok: true, orderNumber: savedOrder.orderNumber, totalInKurus, paymentHtml: sanitizedPaymentHtml },
         { status: 201 },
       );
+    } catch (payErr) {
+      await db.delete(orders).where(eq(orders.id, savedOrder.id));
+      throw payErr;
     }
-
-    const paymentHtml = await paymentResponse.text();
-
-    if (paymentHtml.trim().startsWith("{")) {
-      try {
-        const json = JSON.parse(paymentHtml);
-        if (json.status_code && json.status_code !== 100) {
-          throw new Error(`Ödeme hatası: ${json.status_description || "İşlem reddedildi"}`);
-        }
-      } catch (e) {
-        if (e instanceof Error && e.message.startsWith("Ödeme hatası")) {
-          throw e;
-        }
-        // ignore parse error
-      }
-    }
-
-    if (!paymentResponse.ok) {
-      console.error("HalkÖde response:", paymentHtml);
-      throw new Error("Ödeme sistemiyle iletişim kurulamadı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.");
-    }
-
-    // HalkÖde wraps the form with action=".../redirect-to-bank" and relies on window.onload to change action to bank_url.
-    // Replace action with bank_url directly to avoid Laravel CSRF token expiration errors when client-side script execution is bypassed.
-    let sanitizedPaymentHtml = paymentHtml;
-    const bankUrlMatch = paymentHtml.match(/name=['"]?bank_url['"]?\s+value=['"]?([^'"\s>]+)['"]?/i);
-    if (bankUrlMatch && bankUrlMatch[1]) {
-      sanitizedPaymentHtml = paymentHtml.replace(
-        /action=['"][^'"]*redirect-to-bank['"]/i,
-        `action="${bankUrlMatch[1]}"`
-      );
-    }
-
-    return NextResponse.json(
-      { ok: true, orderNumber: savedOrder.orderNumber, totalInKurus, paymentHtml: sanitizedPaymentHtml },
-      { status: 201 },
-    );
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Sipariş oluşturulamadı." },

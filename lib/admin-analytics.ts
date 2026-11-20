@@ -142,7 +142,7 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
         coalesce(sum(total_in_kurus), 0)::bigint as revenue_in_kurus
       from orders
       where created_at >= ${fromIso}::timestamptz
-        and status not in ('cancelled', 'refunded')
+        and status not in ('cancelled', 'refunded', 'awaiting_payment')
       group by 1
     `);
 
@@ -184,7 +184,7 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
         count(*) filter (where fulfillment_type = 'pickup')::int as pickup_orders
       from orders
       where created_at >= ${fromIso}::timestamptz
-        and status not in ('cancelled', 'refunded')
+        and status not in ('cancelled', 'refunded', 'awaiting_payment')
       group by 1
       order by 1
     `);

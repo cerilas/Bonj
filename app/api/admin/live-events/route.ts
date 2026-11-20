@@ -54,8 +54,8 @@ export async function GET(request: Request) {
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(gt(orders.createdAt, since))
-    .orderBy(asc(orders.createdAt))
+    .where(and(eq(orders.status, "new"), gt(orders.updatedAt, since)))
+    .orderBy(asc(orders.updatedAt))
     .limit(20);
 
   const staffTableLogs = await db

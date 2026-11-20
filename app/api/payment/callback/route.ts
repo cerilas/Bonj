@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { orders } from "@/db/schema";
 import { getHalkodeToken, getHalkodeApiUrl, getHalkodeMerchantKey } from "@/lib/halkode";
-import { notificationBaseUrl } from "@/lib/admin-notifications";
+import {
+  notificationBaseUrl,
+  reportNotificationError,
+  sendConfiguredAdminNotification,
+} from "@/lib/admin-notifications";
 
 async function verifyPayment(orderId: string): Promise<boolean> {
   try {
@@ -73,20 +77,66 @@ async function handleCallback(request: NextRequest) {
     const isPaid = await verifyPayment(orderId);
 
     const db = getDb();
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.orderNumber, orderId))
+      .limit(1);
+
     if (isPaid) {
-      await db
-        .update(orders)
-        .set({ paymentStatus: "paid", status: "new" }) // Mark as new for fulfillment
-        .where(eq(orders.orderNumber, orderId));
+      if (order) {
+        const wasAwaiting = order.status === "awaiting_payment";
+        await db
+          .update(orders)
+          .set({ paymentStatus: "paid", status: "new", updatedAt: new Date() })
+          .where(eq(orders.id, order.id));
+
+        if (wasAwaiting) {
+          const fulfillment =
+            order.fulfillmentType === "table"
+              ? `Masa ${order.tableNumber ?? ""}`
+              : order.fulfillmentType === "delivery"
+                ? `Teslimat (${(order.address ?? "").slice(0, 30)})`
+                : "Gel-al";
+          const amountText = new Intl.NumberFormat("tr-TR", {
+            style: "currency",
+            currency: "TRY",
+            maximumFractionDigits: 0,
+          }).format(order.totalInKurus / 100);
+
+          after(async () => {
+            try {
+              await sendConfiguredAdminNotification({
+                type: "orders",
+                request,
+                itemId: order.id,
+                message: `BONJ | Yeni sipariş ${order.orderNumber}. ${order.customerName}, ${fulfillment}, ${amountText}.`,
+              });
+            } catch (err) {
+              reportNotificationError("orders", err);
+            }
+          });
+        }
+      }
       return NextResponse.redirect(
         new URL(`/sepet?status=success&orderNumber=${encodeURIComponent(orderId)}`, baseUrl),
         { status: 303 },
       );
     } else {
-      await db
-        .update(orders)
-        .set({ paymentStatus: "failed" })
-        .where(eq(orders.orderNumber, orderId));
+      if (order) {
+        if (
+          order.status === "awaiting_payment" ||
+          order.fulfillmentType === "delivery" ||
+          order.fulfillmentType === "pickup"
+        ) {
+          await db.delete(orders).where(eq(orders.id, order.id));
+        } else {
+          await db
+            .update(orders)
+            .set({ paymentStatus: "failed", updatedAt: new Date() })
+            .where(eq(orders.id, order.id));
+        }
+      }
       return NextResponse.redirect(failedUrl, { status: 303 });
     }
   } catch (error) {

@@ -227,7 +227,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
     .where(
       and(
         eq(orders.fulfillmentType, "table"),
-        notInArray(orders.status, ["completed", "cancelled", "refunded"]),
+        notInArray(orders.status, ["completed", "cancelled", "refunded", "awaiting_payment"]),
       ),
     )
     .orderBy(asc(orders.createdAt));

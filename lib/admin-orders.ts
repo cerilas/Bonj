@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { orderItems, orders } from "@/db/schema";
 
@@ -76,14 +76,15 @@ export async function getAdminOrders({
 } = {}): Promise<AdminOrderPage> {
   const db = getDb();
   const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
-  const whereClause = status === "all" ? undefined : eq(orders.status, status);
+  const notAwaiting = ne(orders.status, "awaiting_payment");
+  const whereClause = status === "all" ? notAwaiting : and(notAwaiting, eq(orders.status, status));
   const [[filtered], [summary]] = await Promise.all([
     db.select({ value: count(orders.id) }).from(orders).where(whereClause),
     db.select({
       total: count(orders.id),
       newCount: sql<number>`count(*) filter (where ${orders.status} = 'new')`,
       activeCount: sql<number>`count(*) filter (where ${orders.status} in ('accepted', 'preparing', 'ready'))`,
-    }).from(orders),
+    }).from(orders).where(notAwaiting),
   ]);
   const total = Number(filtered?.value ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / safePageSize));
