@@ -188,12 +188,12 @@ html[data-theme="dark"] .cd-idle-logo {
   width: min(680px, 100%);
   padding: clamp(28px, 4vw, 52px);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(25, 19, 22, 0.72);
-  color: #f5efe4;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(23, 17, 20, 0.14);
+  background: rgba(255, 250, 243, 0.9);
+  color: #171114;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -201,22 +201,10 @@ html[data-theme="dark"] .cd-idle-logo {
   gap: 14px;
 }
 
-.cd-idle-card .cd-idle-logo {
-  filter: brightness(0) invert(1);
-}
-
-.cd-idle-card p {
-  color: rgba(245, 239, 228, 0.78);
-}
-
-.cd-idle-card .cd-idle-meta {
+html[data-theme="dark"] .cd-idle-card {
   border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(245, 239, 228, 0.78);
-}
-
-.cd-idle-card .cd-idle-meta strong {
-  color: #fff;
+  background: rgba(22, 16, 19, 0.82);
+  color: #f5efe4;
 }
 
 .cd-idle-logo {
@@ -231,6 +219,7 @@ html[data-theme="dark"] .cd-idle-logo {
   font-weight: 400;
   line-height: 0.9;
   letter-spacing: -0.04em;
+  color: inherit;
 }
 
 .cd-idle-card h1 em {
@@ -243,21 +232,35 @@ html[data-theme="dark"] .cd-idle-logo {
   margin: 0;
   font-size: clamp(13px, 1.5vw, 16px);
   line-height: 1.55;
-  color: var(--cd-muted);
+  color: rgba(23, 17, 20, 0.76);
+}
+
+html[data-theme="dark"] .cd-idle-card p {
+  color: rgba(245, 239, 228, 0.82);
 }
 
 .cd-idle-meta {
   margin-top: 6px;
   padding: 10px 18px;
   border-radius: 999px;
-  border: 1px solid var(--cd-line);
-  background: var(--cd-panel-strong);
+  border: 1px solid rgba(23, 17, 20, 0.14);
+  background: rgba(255, 255, 255, 0.72);
   font-size: 12px;
-  color: var(--cd-muted);
+  color: rgba(23, 17, 20, 0.75);
 }
 
 .cd-idle-meta strong {
-  color: var(--cd-ink);
+  color: #171114;
+}
+
+html[data-theme="dark"] .cd-idle-meta {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 239, 228, 0.8);
+}
+
+html[data-theme="dark"] .cd-idle-meta strong {
+  color: #fff;
 }
 
 /* Checkout Mode - Zero Scroll 2-Column */
