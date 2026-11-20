@@ -445,13 +445,13 @@ export function CartExperience({ googleMapsApiKey = "" }: { googleMapsApiKey?: s
             <fieldset className="cart-fulfillment">
               <legend>Nasıl teslim alacaksın?</legend>
               <button className={fulfillment === "table" ? "is-selected" : ""} type="button" onClick={() => setFulfillment("table")} aria-pressed={fulfillment === "table"}>
-                <small>01</small><strong>BONJ’dayım</strong><span>Masa numaram belli</span><i><UiIcon name="check" /></i>
+                <small>01</small><strong>bonj’dayım</strong><span>Masa numaram belli</span><i><UiIcon name="check" /></i>
               </button>
               <button className={fulfillment === "pickup" ? "is-selected" : ""} type="button" onClick={() => setFulfillment("pickup")} aria-pressed={fulfillment === "pickup"}>
-                <small>02</small><strong>BONJ’a geliyorum</strong><span>Şu saatte hazır olsun</span><i><UiIcon name="check" /></i>
+                <small>02</small><strong>bonj’a geliyorum</strong><span>Şu saatte hazır olsun</span><i><UiIcon name="check" /></i>
               </button>
               <button className={fulfillment === "delivery" ? "is-selected" : ""} type="button" onClick={() => setFulfillment("delivery")} aria-pressed={fulfillment === "delivery"}>
-                <small>03</small><strong>BONJ evime gelsin</strong><span>Adresime teslim</span><i><UiIcon name="check" /></i>
+                <small>03</small><strong>bonj evime gelsin</strong><span>Adresime teslim</span><i><UiIcon name="check" /></i>
               </button>
             </fieldset>
 

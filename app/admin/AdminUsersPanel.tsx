@@ -329,7 +329,7 @@ export function AdminUsersPanel({
             <div className="admin-user-editor-body">
               <div className="admin-user-editor-mark" aria-hidden="true">
                 <span>{(form.name || "B").slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
-                <small>BONJ / ADMIN</small>
+                <small>bonj / ADMIN</small>
               </div>
               <div className="admin-fields">
                 <label>Ad soyad *<input required minLength={2} maxLength={120} autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Örn. Deniz Yılmaz" /></label>

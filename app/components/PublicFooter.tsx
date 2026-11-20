@@ -89,7 +89,7 @@ export function PublicFooter() {
         <section className="public-location" aria-labelledby="public-location-title">
         <div className="public-location-heading">
           <div>
-            <span>BONJ / GAZİANTEP</span>
+            <span>bonj / GAZİANTEP</span>
             <h2 id="public-location-title">Bizi bul.</h2>
           </div>
           <div className="public-location-address">

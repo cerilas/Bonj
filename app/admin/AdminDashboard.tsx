@@ -1876,7 +1876,7 @@ export function AdminDashboard({
               </div>
 
               <div className="admin-order-delivery-card">
-                <span>{selectedOrder.fulfillmentType === "table" ? "BONJ’DAYIM" : selectedOrder.fulfillmentType === "delivery" ? "ADRESE TESLİMAT" : "BONJ’A GELİYORUM"}</span>
+                <span>{selectedOrder.fulfillmentType === "table" ? "bonj’dayım" : selectedOrder.fulfillmentType === "delivery" ? "ADRESE TESLİMAT" : "bonj’a geliyorum"}</span>
                 <strong>{selectedOrder.fulfillmentType === "table" ? `Masa ${selectedOrder.tableNumber}` : selectedOrder.pickupAt ? messageDate(selectedOrder.pickupAt) : "Saat belirtilmedi"}</strong>
               </div>
 

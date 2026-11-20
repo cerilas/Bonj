@@ -15,7 +15,7 @@ export default function CateringPage() {
     <main className="catering-page">
       <section className="catering-hero">
         <div className="catering-intro">
-          <span className="catering-kicker">BONJ / CATERING STUDIO</span>
+          <span className="catering-kicker">bonj / CATERING STUDIO</span>
           <h1>Davetin<br /><em>tadı.</em></h1>
           <p>İlk görüşmeyi hızlandıracak birkaç detayı paylaş; menüyü, servisi ve sunumu birlikte şekillendirelim.</p>
           <div className="catering-promise">

@@ -525,7 +525,7 @@ export function CafeExperience({
         <div className="brunch-word" aria-hidden="true">BRUNCH</div>
         <div className="brunch-layout section-shell">
           <div className="brunch-copy" data-reveal>
-            <span className="section-index">03 / BONJ BRUNCH</span>
+            <span className="section-index">03 / bonj BRUNCH</span>
             <p className="brunch-kicker">Kahvaltının yeni katmanı</p>
             <h2 id="brunch-title">
               Kat kat.<br />
@@ -573,7 +573,7 @@ export function CafeExperience({
         <div className="story-blob blob-two" aria-hidden="true" />
         <div className="section-shell story-inner">
           <div className="story-title" data-reveal>
-            <span className="section-index">04 / BONJ HİKÂYESİ</span>
+            <span className="section-index">04 / bonj HİKÂYESİ</span>
             <h2>
               Tarif değil,
               <em>his bırakıyoruz.</em>
