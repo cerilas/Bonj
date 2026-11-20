@@ -736,6 +736,13 @@ export function HesabimExperience({ googleMapsApiKey = "" }: { googleMapsApiKey?
                           </div>
                         ))}
                       </div>
+
+                      <div className="bonj-order-card-footer">
+                        <a href="tel:+905076447985" className="bonj-order-call-btn">
+                          <UiIcon name="phone" />
+                          <span>bonj’u Ara · 0507 644 79 85</span>
+                        </a>
+                      </div>
                     </article>
                   );
                 })}

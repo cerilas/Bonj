@@ -1669,3 +1669,51 @@ html[data-theme="dark"] .public-header-user-btn {
     margin-left: auto;
   }
 }
+
+/* Order Card Footer Call Button */
+.bonj-order-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14px;
+  margin-top: 12px;
+  border-top: 1px dashed rgba(23, 17, 20, 0.12);
+}
+
+html[data-theme="dark"] .bonj-order-card-footer {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.bonj-order-call-btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(169, 25, 64, 0.35);
+  background: rgba(169, 25, 64, 0.08);
+  color: #a91940;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+html[data-theme="dark"] .bonj-order-call-btn {
+  border-color: rgba(255, 82, 121, 0.4);
+  background: rgba(255, 82, 121, 0.12);
+  color: #ff8fa8;
+}
+
+.bonj-order-call-btn:hover {
+  background: #a91940;
+  border-color: #a91940;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .bonj-order-call-btn {
+    width: 100%;
+  }
+}
