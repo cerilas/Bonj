@@ -79,7 +79,7 @@ const discoveryLinks = [
 export function PublicFooter() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/garson")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/garson") || pathname.startsWith("/musteri-ekrani")) return null;
 
   const isAuthOrPortal = pathname === "/giris" || pathname === "/hesabim";
 

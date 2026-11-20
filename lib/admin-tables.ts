@@ -99,6 +99,7 @@ export type AdminTablesSnapshot = {
 };
 
 const defaultTablesSeed = [
+  { code: "KASA", name: "Ayakta / Kasa", zone: "Kasa", capacity: 1, sortOrder: 0 },
   { code: "1", name: "Masa 1", zone: "Salon", capacity: 2, sortOrder: 1 },
   { code: "2", name: "Masa 2", zone: "Salon", capacity: 2, sortOrder: 2 },
   { code: "3", name: "Masa 3", zone: "Salon", capacity: 4, sortOrder: 3 },
@@ -120,7 +121,14 @@ export async function ensureDefaultCafeTables() {
     .from(cafeTables)
     .limit(1);
 
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    // Ensure the walk-in / quick takeaway KASA station also exists on older databases
+    await db
+      .insert(cafeTables)
+      .values(defaultTablesSeed[0])
+      .onConflictDoNothing({ target: cafeTables.code });
+    return;
+  }
 
   await db
     .insert(cafeTables)

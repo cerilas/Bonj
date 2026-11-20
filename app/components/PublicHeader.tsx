@@ -17,7 +17,7 @@ export function PublicHeader() {
   const { user, isLoggedIn } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/garson")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/garson") || pathname.startsWith("/musteri-ekrani")) return null;
 
   const closeMenu = () => setIsOpen(false);
 

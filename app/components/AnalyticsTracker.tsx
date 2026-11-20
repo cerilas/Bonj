@@ -33,7 +33,7 @@ export function AnalyticsTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/garson")) return;
+    if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/garson") || pathname.startsWith("/musteri-ekrani")) return;
 
     let visitorId: string;
     let sessionId: string;

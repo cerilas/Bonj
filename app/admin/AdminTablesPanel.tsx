@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminCafeTable, AdminClosedTableSession, AdminTablesSnapshot } from "@/lib/admin-tables";
+import { publishCustomerDisplayState } from "@/lib/customer-display";
 import { BrandLogo } from "../components/BrandLogo";
 import { UiIcon } from "../components/UiIcon";
 
@@ -135,6 +136,7 @@ export function AdminTablesPanel({
 
   // Receipt preview modal
   const [previewReceipt, setPreviewReceipt] = useState<PosPrintReceiptData | null>(null);
+  const paidHoldUntilRef = useRef<number>(0);
 
   const loadSnapshot = useCallback(async () => {
     try {
@@ -454,6 +456,24 @@ export function AdminTablesPanel({
       setCashTenderedTl("");
       setSplitCashTl("");
       setSplitCardTl("");
+      if (!staffMode) {
+        const cashInKurus = Math.max(0, Math.round((Number(cashTenderedTl.replace(",", ".")) || 0) * 100));
+        const changeAmt =
+          paymentMethod === "cash" && cashInKurus > finalTotal ? cashInKurus - finalTotal : 0;
+        paidHoldUntilRef.current = Date.now() + 6000;
+        publishCustomerDisplayState({
+          mode: "paid",
+          sourceLabel:
+            selectedTable.code === "KASA"
+              ? "Ayakta / Hızlı Satış"
+              : `${selectedTable.name} · ${selectedTable.zone}`,
+          totalInKurus: finalTotal,
+          paymentMethod,
+          changeInKurus: changeAmt,
+          itemCount: sessionSnapshot.items.reduce((s, i) => s + i.quantity, 0),
+          updatedAt: Date.now(),
+        });
+      }
       flashNotice(`${selectedTable.name} hesabı kapatıldı (${money(finalTotal)}).`);
       await loadSnapshot();
 
@@ -521,6 +541,91 @@ export function AdminTablesPanel({
   const payableKurus = Math.max(0, posSubtotal - discountKurus);
   const cashTenderedKurus = Math.max(0, Math.round((Number(cashTenderedTl.replace(",", ".")) || 0) * 100));
   const changeKurus = cashTenderedKurus > payableKurus ? cashTenderedKurus - payableKurus : 0;
+  const splitCashKurus = Math.max(0, Math.round((Number(splitCashTl.replace(",", ".")) || 0) * 100));
+  const splitCardKurus = Math.max(0, Math.round((Number(splitCardTl.replace(",", ".")) || 0) * 100));
+
+  // Real-time Customer Display sync (2nd monitor on POS PC)
+  useEffect(() => {
+    if (staffMode) return;
+    if (!selectedTable) {
+      if (Date.now() >= paidHoldUntilRef.current) {
+        publishCustomerDisplayState({ mode: "idle", updatedAt: Date.now() });
+      }
+      return;
+    }
+
+    const posItems = activeSession?.items ?? [];
+    const qrItems = selectedTable.onlineOrders.flatMap((o) => o.items);
+    const combinedItems = [
+      ...posItems.map((i) => ({
+        productName: i.productName,
+        quantity: i.quantity,
+        unitPriceInKurus: i.unitPriceInKurus,
+        lineTotalInKurus: i.lineTotalInKurus,
+      })),
+      ...qrItems.map((i) => ({
+        productName: `${i.productName} (QR)`,
+        quantity: i.quantity,
+        unitPriceInKurus: i.unitPriceInKurus,
+        lineTotalInKurus: i.lineTotalInKurus,
+      })),
+    ];
+
+    if (combinedItems.length === 0) {
+      if (Date.now() >= paidHoldUntilRef.current) {
+        publishCustomerDisplayState({ mode: "idle", updatedAt: Date.now() });
+      }
+      return;
+    }
+
+    paidHoldUntilRef.current = 0;
+    const qrSubtotal = selectedTable.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0);
+    const subtotal = posSubtotal + qrSubtotal;
+    const total = Math.max(0, subtotal - discountKurus);
+    const cashChange = cashTenderedKurus > total ? cashTenderedKurus - total : 0;
+
+    publishCustomerDisplayState({
+      mode: "checkout",
+      sourceLabel:
+        selectedTable.code === "KASA"
+          ? "Ayakta / Hızlı Satış"
+          : `${selectedTable.name} · ${selectedTable.zone}`,
+      customerName: activeSession?.customerName ?? null,
+      items: combinedItems,
+      subtotalInKurus: subtotal,
+      discountInKurus: discountKurus,
+      totalInKurus: total,
+      paymentMethod: activeSession ? paymentMethod : null,
+      cashTenderedInKurus: cashTenderedKurus,
+      changeInKurus: cashChange,
+      splitCashInKurus: splitCashKurus,
+      splitCardInKurus: splitCardKurus,
+      updatedAt: Date.now(),
+    });
+  }, [
+    staffMode,
+    selectedTable,
+    activeSession,
+    posSubtotal,
+    discountKurus,
+    paymentMethod,
+    cashTenderedKurus,
+    splitCashKurus,
+    splitCardKurus,
+  ]);
+
+  const kasaTable = useMemo(
+    () => snapshot?.tables.find((t) => t.code === "KASA") ?? null,
+    [snapshot],
+  );
+
+  function openCustomerDisplayWindow() {
+    window.open(
+      "/musteri-ekrani",
+      "bonjCustomerDisplay",
+      "width=1180,height=760,menubar=no,toolbar=no,location=no,status=no",
+    );
+  }
 
   return (
     <section className="admin-pos-wrap">
@@ -597,6 +702,24 @@ export function AdminTablesPanel({
           </div>
         </div>
         <div className="admin-pos-toolbar-actions">
+          {kasaTable && (
+            <button
+              type="button"
+              className="admin-pos-quick-sale-btn"
+              onClick={() => {
+                setZoneFilter("all");
+                setStatusFilter("all");
+                setSelectedTableId(kasaTable.id);
+              }}
+            >
+              Ayakta / Hızlı Satış
+            </button>
+          )}
+          {!staffMode && (
+            <button type="button" onClick={openCustomerDisplayWindow}>
+              Müşteri Ekranı
+            </button>
+          )}
           {!staffMode && (
             <button type="button" onClick={() => setShowAddTable((v) => !v)}>
               {showAddTable ? "Vazgeç" : "+ Masa Ekle"}

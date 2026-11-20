@@ -22,6 +22,26 @@ export type TopProductStat = {
   onlineQuantity: number;
 };
 
+export type TopCustomerStat = {
+  customerName: string;
+  phone: string;
+  orderCount: number;
+  totalSpentInKurus: number;
+  lastOrderAt: string;
+};
+
+export type PaymentBreakdownStat = {
+  method: string;
+  label: string;
+  count: number;
+  revenueInKurus: number;
+};
+
+export type PeakHourStat = {
+  hour: number;
+  orders: number;
+};
+
 export type AdminAnalyticsData = {
   period: AnalyticsPeriod;
   generatedAt: string;
@@ -47,6 +67,9 @@ export type AdminAnalyticsData = {
   };
   orderChannels: OrderChannelBreakdown[];
   topProducts: TopProductStat[];
+  topCustomers: TopCustomerStat[];
+  paymentBreakdown: PaymentBreakdownStat[];
+  peakHours: PeakHourStat[];
   timeline: Array<{
     date: string;
     visits: number;
@@ -277,6 +300,51 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       limit 12
     `);
 
+  const topCustomersResult = await db.execute(sql`
+      select
+        max(customer_name) as customer_name,
+        phone,
+        count(*)::int as order_count,
+        coalesce(sum(total_in_kurus), 0)::bigint as total_spent_in_kurus,
+        max(created_at) as last_order_at
+      from orders
+      where created_at >= ${fromIso}::timestamptz
+        and status not in ('cancelled', 'refunded', 'awaiting_payment')
+        and phone <> ''
+      group by phone
+      order by order_count desc, total_spent_in_kurus desc
+      limit 5
+    `);
+
+  const posPaymentsResult = await db.execute(sql`
+      select
+        count(*) filter (where paid_cash_in_kurus > 0)::int as cash_count,
+        coalesce(sum(paid_cash_in_kurus), 0)::bigint as cash_total,
+        count(*) filter (where paid_card_in_kurus > 0)::int as card_count,
+        coalesce(sum(paid_card_in_kurus), 0)::bigint as card_total,
+        count(*) filter (where payment_method = 'free')::int as free_count
+      from table_sessions
+      where opened_at >= ${fromIso}::timestamptz
+        and status = 'closed'
+    `);
+
+  const peakHoursResult = await db.execute(sql`
+      with all_events as (
+        select extract(hour from (created_at at time zone 'Europe/Istanbul'))::int as hr
+        from orders
+        where created_at >= ${fromIso}::timestamptz
+          and status not in ('cancelled', 'refunded', 'awaiting_payment')
+        union all
+        select extract(hour from (opened_at at time zone 'Europe/Istanbul'))::int as hr
+        from table_sessions
+        where opened_at >= ${fromIso}::timestamptz
+      )
+      select hr as hour, count(*)::int as orders
+      from all_events
+      group by hr
+      order by hr
+    `);
+
   const overviewRow = rowsFrom<Row>(overviewResult)[0] ?? {};
   const messagesRow = rowsFrom<Row>(messagesResult)[0] ?? {};
   const cateringRow = rowsFrom<Row>(cateringResult)[0] ?? {};
@@ -344,6 +412,43 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
     return dayKey(date);
   });
 
+  const posPayRow = rowsFrom<Row>(posPaymentsResult)[0] ?? {};
+  const paymentBreakdown: PaymentBreakdownStat[] = [
+    {
+      method: "online",
+      label: "Online Sanal POS",
+      count: onlineOrders,
+      revenueInKurus: onlineRevenueInKurus,
+    },
+    {
+      method: "cash",
+      label: "Kasa Nakit",
+      count: numberValue(posPayRow.cash_count),
+      revenueInKurus: numberValue(posPayRow.cash_total),
+    },
+    {
+      method: "card",
+      label: "Kasa Kart",
+      count: numberValue(posPayRow.card_count),
+      revenueInKurus: numberValue(posPayRow.card_total),
+    },
+    {
+      method: "free",
+      label: "İkram",
+      count: numberValue(posPayRow.free_count),
+      revenueInKurus: 0,
+    },
+  ];
+
+  const peakHoursMap = new Map<number, number>();
+  for (const row of rowsFrom<Row>(peakHoursResult)) {
+    peakHoursMap.set(numberValue(row.hour), numberValue(row.orders));
+  }
+  const peakHours: PeakHourStat[] = Array.from({ length: 16 }, (_, idx) => {
+    const hour = idx + 8; // 08:00 - 23:00
+    return { hour, orders: peakHoursMap.get(hour) ?? 0 };
+  });
+
   return {
     period,
     generatedAt: new Date().toISOString(),
@@ -375,6 +480,15 @@ export async function getAdminAnalytics(period: AnalyticsPeriod): Promise<AdminA
       posQuantity: numberValue(row.pos_quantity),
       onlineQuantity: numberValue(row.online_quantity),
     })),
+    topCustomers: rowsFrom<Row>(topCustomersResult).map((row) => ({
+      customerName: String(row.customer_name || "Müşteri"),
+      phone: String(row.phone || ""),
+      orderCount: numberValue(row.order_count),
+      totalSpentInKurus: numberValue(row.total_spent_in_kurus),
+      lastOrderAt: row.last_order_at ? new Date(String(row.last_order_at)).toISOString() : new Date().toISOString(),
+    })),
+    paymentBreakdown,
+    peakHours,
     timeline: dayKeys.map((date) => {
       const row = timelineByDay.get(date) ?? {};
       return {

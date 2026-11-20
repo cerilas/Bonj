@@ -35,7 +35,93 @@ function duration(value: number) {
 }
 
 function shortDate(value: string) {
-  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
+  if (value.length === 7) {
+    return new Intl.DateTimeFormat("tr-TR", { month: "short", year: "2-digit" }).format(
+      new Date(`${value}-15T12:00:00`),
+    );
+  }
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short" }).format(
+    new Date(`${value}T12:00:00`),
+  );
+}
+
+function bucketTraffic(rows: AdminAnalyticsData["timeline"]) {
+  if (rows.length <= 35) {
+    return rows.map((r) => ({ ...r, label: shortDate(r.date) }));
+  }
+  if (rows.length > 190) {
+    const byMonth = new Map<string, { date: string; visits: number; uniqueVisitors: number; pageViews: number }>();
+    for (const r of rows) {
+      const m = r.date.slice(0, 7);
+      const cur = byMonth.get(m) ?? { date: m, visits: 0, uniqueVisitors: 0, pageViews: 0 };
+      cur.visits += r.visits;
+      cur.uniqueVisitors += r.uniqueVisitors;
+      cur.pageViews += r.pageViews;
+      byMonth.set(m, cur);
+    }
+    return Array.from(byMonth.values()).map((r) => ({ ...r, label: shortDate(r.date) }));
+  }
+  const chunkSize = 7;
+  const out: Array<{ date: string; label: string; visits: number; uniqueVisitors: number; pageViews: number }> = [];
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const slice = rows.slice(i, i + chunkSize);
+    out.push({
+      date: slice[0].date,
+      label: shortDate(slice[0].date),
+      visits: slice.reduce((s, r) => s + r.visits, 0),
+      uniqueVisitors: slice.reduce((s, r) => s + r.uniqueVisitors, 0),
+      pageViews: slice.reduce((s, r) => s + r.pageViews, 0),
+    });
+  }
+  return out;
+}
+
+function bucketOrders(rows: AdminAnalyticsData["orderTimeline"]) {
+  if (rows.length <= 35) {
+    return rows.map((r) => ({ ...r, label: shortDate(r.date) }));
+  }
+  if (rows.length > 190) {
+    const byMonth = new Map<
+      string,
+      AdminAnalyticsData["orderTimeline"][number]
+    >();
+    for (const r of rows) {
+      const m = r.date.slice(0, 7);
+      const cur = byMonth.get(m) ?? {
+        date: m,
+        orders: 0,
+        revenueInKurus: 0,
+        posTableOrders: 0,
+        qrTableOrders: 0,
+        deliveryOrders: 0,
+        pickupOrders: 0,
+      };
+      cur.orders += r.orders;
+      cur.revenueInKurus += r.revenueInKurus;
+      cur.posTableOrders += r.posTableOrders;
+      cur.qrTableOrders += r.qrTableOrders;
+      cur.deliveryOrders += r.deliveryOrders;
+      cur.pickupOrders += r.pickupOrders;
+      byMonth.set(m, cur);
+    }
+    return Array.from(byMonth.values()).map((r) => ({ ...r, label: shortDate(r.date) }));
+  }
+  const chunkSize = 7;
+  const out: Array<AdminAnalyticsData["orderTimeline"][number] & { label: string }> = [];
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const slice = rows.slice(i, i + chunkSize);
+    out.push({
+      date: slice[0].date,
+      label: shortDate(slice[0].date),
+      orders: slice.reduce((s, r) => s + r.orders, 0),
+      revenueInKurus: slice.reduce((s, r) => s + r.revenueInKurus, 0),
+      posTableOrders: slice.reduce((s, r) => s + r.posTableOrders, 0),
+      qrTableOrders: slice.reduce((s, r) => s + r.qrTableOrders, 0),
+      deliveryOrders: slice.reduce((s, r) => s + r.deliveryOrders, 0),
+      pickupOrders: slice.reduce((s, r) => s + r.pickupOrders, 0),
+    });
+  }
+  return out;
 }
 
 function countryLabel(code: string) {
@@ -51,65 +137,143 @@ function deviceLabel(value: string) {
   return { mobile: "Mobil", desktop: "Masaüstü", tablet: "Tablet", unknown: "Bilinmiyor" }[value] ?? value;
 }
 
-function chartPoints(values: number[], width: number, height: number, padding: number) {
+function chartPoints(values: number[], width: number, height: number, padLeft: number, padRight: number, padY: number) {
   const max = Math.max(1, ...values);
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padY * 2;
   return values.map((value, index) => {
-    const x = padding + (index / Math.max(1, values.length - 1)) * (width - padding * 2);
-    const y = height - padding - (value / max) * (height - padding * 2);
+    const x = padLeft + (index / Math.max(1, values.length - 1)) * innerW;
+    const y = height - padY - (value / max) * innerH;
     return { x, y, value };
   });
 }
 
 function TrafficChart({ rows }: { rows: AdminAnalyticsData["timeline"] }) {
+  const bucketed = useMemo(() => bucketTraffic(rows), [rows]);
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const width = 820;
-  const height = 250;
-  const padding = 24;
-  const visits = chartPoints(rows.map((row) => row.visits), width, height, padding);
-  const unique = chartPoints(rows.map((row) => row.uniqueVisitors), width, height, padding);
+  const height = 240;
+  const padLeft = 42;
+  const padRight = 18;
+  const padY = 26;
+
+  const maxVisits = Math.max(1, ...bucketed.map((r) => r.visits));
+  const visits = chartPoints(bucketed.map((row) => row.visits), width, height, padLeft, padRight, padY);
+  const unique = chartPoints(bucketed.map((row) => row.uniqueVisitors), width, height, padLeft, padRight, padY);
   const line = (points: typeof visits) => points.map((point) => `${point.x},${point.y}`).join(" ");
   const area = visits.length
-    ? `M ${visits[0].x} ${height - padding} L ${visits.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${visits.at(-1)?.x} ${height - padding} Z`
+    ? `M ${visits[0].x} ${height - padY} L ${visits.map((point) => `${point.x} ${point.y}`).join(" L ")} L ${visits.at(-1)?.x} ${height - padY} Z`
     : "";
-  const labelIndexes = [...new Set([0, Math.floor((rows.length - 1) / 2), rows.length - 1])].filter((index) => index >= 0);
+
+  const labelStep = Math.max(1, Math.ceil(bucketed.length / 6));
+  const labelIndexes = bucketed
+    .map((_, idx) => idx)
+    .filter((idx) => idx === 0 || idx === bucketed.length - 1 || idx % labelStep === 0);
+
+  const activeRow = activeIdx !== null ? bucketed[activeIdx] : bucketed.at(-1);
 
   return (
     <div className="admin-analytics-chart-wrap">
+      {activeRow && (
+        <div className="admin-chart-readout">
+          <strong>{activeRow.label}</strong>
+          <span>{number(activeRow.visits)} ziyaret · {number(activeRow.uniqueVisitors)} tekil · {number(activeRow.pageViews)} görüntüleme</span>
+        </div>
+      )}
       <svg className="admin-analytics-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Zamana göre ziyaret ve tekil ziyaret grafiği">
         <defs>
           <linearGradient id="trafficArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#a91940" stopOpacity=".2" />
+            <stop offset="0" stopColor="#a91940" stopOpacity=".22" />
             <stop offset="1" stopColor="#a91940" stopOpacity="0" />
           </linearGradient>
         </defs>
-        {[0.2, 0.4, 0.6, 0.8].map((ratio) => <line key={ratio} x1={padding} x2={width - padding} y1={height * ratio} y2={height * ratio} className="chart-grid" />)}
+        {[0, 0.5, 1].map((ratio) => {
+          const y = height - padY - ratio * (height - padY * 2);
+          const val = Math.round(maxVisits * ratio);
+          return (
+            <g key={ratio}>
+              <line x1={padLeft} x2={width - padRight} y1={y} y2={y} className="chart-grid" />
+              <text x={padLeft - 8} y={y + 4} textAnchor="end" className="chart-y-label">{val}</text>
+            </g>
+          );
+        })}
         {area && <path d={area} fill="url(#trafficArea)" />}
         <polyline points={line(visits)} className="chart-line chart-line-primary" />
         <polyline points={line(unique)} className="chart-line chart-line-secondary" />
-        {visits.map((point, index) => <circle key={rows[index]?.date} cx={point.x} cy={point.y} r="3" className="chart-point"><title>{shortDate(rows[index].date)} · {point.value} ziyaret</title></circle>)}
-        {labelIndexes.map((index) => <text key={index} x={visits[index]?.x ?? padding} y={height - 2} textAnchor={index === 0 ? "start" : index === rows.length - 1 ? "end" : "middle"}>{rows[index] ? shortDate(rows[index].date) : ""}</text>)}
+        {visits.map((point, index) => (
+          <circle
+            key={`${bucketed[index]?.date}-${index}`}
+            cx={point.x}
+            cy={point.y}
+            r={activeIdx === index ? 5.5 : 3.5}
+            className="chart-point"
+            onMouseEnter={() => setActiveIdx(index)}
+            onClick={() => setActiveIdx(index)}
+          >
+            <title>{bucketed[index]?.label} · {point.value} ziyaret</title>
+          </circle>
+        ))}
+        {labelIndexes.map((index) => (
+          <text
+            key={index}
+            x={visits[index]?.x ?? padLeft}
+            y={height - 4}
+            textAnchor={index === 0 ? "start" : index === bucketed.length - 1 ? "end" : "middle"}
+          >
+            {bucketed[index]?.label ?? ""}
+          </text>
+        ))}
       </svg>
     </div>
   );
 }
 
 function OrderChart({ rows }: { rows: AdminAnalyticsData["orderTimeline"] }) {
-  const max = Math.max(1, ...rows.map((row) => row.revenueInKurus));
-  const visibleLabels = rows.length <= 7 ? rows : rows.filter((_, index) => index % Math.ceil(rows.length / 7) === 0 || index === rows.length - 1);
+  const bucketed = useMemo(() => bucketOrders(rows), [rows]);
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const max = Math.max(1, ...bucketed.map((row) => row.revenueInKurus));
+  const labelStep = Math.max(1, Math.ceil(bucketed.length / 6));
+  const visibleLabels = bucketed.filter(
+    (_, index) => index === 0 || index === bucketed.length - 1 || index % labelStep === 0,
+  );
+  const activeRow = activeIdx !== null ? bucketed[activeIdx] : bucketed.at(-1);
+
   return (
     <div className="admin-order-chart" role="img" aria-label="Zamana göre sipariş cirosu grafiği">
-      <div className="admin-order-chart-bars">
-        {rows.map((row) => (
-          <span
-            key={row.date}
-            title={`${shortDate(row.date)} · ${row.orders} sipariş · ${money(row.revenueInKurus)} (Masa Kasa: ${row.posTableOrders}, QR: ${row.qrTableOrders}, Paket: ${row.deliveryOrders}, Gel Al: ${row.pickupOrders})`}
-            style={{ "--bar": `${Math.max(row.revenueInKurus ? 4 : 0, (row.revenueInKurus / max) * 100)}%` } as React.CSSProperties}
-          >
-            <i />
+      {activeRow && (
+        <div className="admin-chart-readout">
+          <strong>{activeRow.label}</strong>
+          <span>
+            {activeRow.orders} sipariş · {money(activeRow.revenueInKurus)} (Kasa: {activeRow.posTableOrders} · QR: {activeRow.qrTableOrders} · Paket: {activeRow.deliveryOrders} · Gel Al: {activeRow.pickupOrders})
           </span>
-        ))}
-      </div>
-      <div className="admin-order-chart-labels">
-        {visibleLabels.map((row) => <small key={row.date}>{shortDate(row.date)}</small>)}
+        </div>
+      )}
+      <div className="admin-order-chart-area">
+        <div className="admin-order-chart-yaxis">
+          <span>{money(max)}</span>
+          <span>{money(Math.round(max / 2))}</span>
+          <span>0 ₺</span>
+        </div>
+        <div className="admin-order-chart-main">
+          <div className="admin-order-chart-bars">
+            {bucketed.map((row, idx) => (
+              <button
+                type="button"
+                key={`${row.date}-${idx}`}
+                className={activeIdx === idx ? "is-active" : ""}
+                onMouseEnter={() => setActiveIdx(idx)}
+                onClick={() => setActiveIdx(idx)}
+                title={`${row.label} · ${row.orders} sipariş · ${money(row.revenueInKurus)}`}
+                style={{ "--bar": `${Math.max(row.revenueInKurus ? 6 : 0, (row.revenueInKurus / max) * 100)}%` } as React.CSSProperties}
+              >
+                <i />
+              </button>
+            ))}
+          </div>
+          <div className="admin-order-chart-labels">
+            {visibleLabels.map((row) => <small key={row.date}>{row.label}</small>)}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -316,6 +480,72 @@ export function AdminAnalyticsPanel() {
                   </div>
                 ))}
                 {!filteredTopProducts.length && <p>Bu dönemde ürün siparişi bulunamadı.</p>}
+              </div>
+            </article>
+
+            <div className="admin-analytics-grid-two">
+              <article className="admin-analytics-panel">
+                <header><div><span>SADIK MÜŞTERİLER</span><h2>En çok sipariş veren Top 5 müşteri</h2></div></header>
+                <div className="admin-analytics-table admin-top-customers-table">
+                  <div className="admin-analytics-table-head">
+                    <span>Müşteri</span>
+                    <span>Sipariş</span>
+                    <span>Toplam Harcama</span>
+                  </div>
+                  {(data.topCustomers ?? []).map((cust, idx) => (
+                    <div key={`${cust.phone}-${idx}`}>
+                      <strong>
+                        <em className="admin-product-rank">{idx + 1}.</em> {cust.customerName}
+                        <small>{cust.phone}</small>
+                      </strong>
+                      <span><strong>{number(cust.orderCount)}</strong> adet</span>
+                      <span><strong>{money(cust.totalSpentInKurus)}</strong></span>
+                    </div>
+                  ))}
+                  {!(data.topCustomers ?? []).length && <p>Bu dönemde kayıtlı müşteri siparişi bulunamadı.</p>}
+                </div>
+              </article>
+
+              <article className="admin-analytics-panel">
+                <header><div><span>TAHSİLAT DAĞILIMI</span><h2>Ödeme yöntemleri</h2></div></header>
+                <div className="admin-analytics-bars">
+                  {(data.paymentBreakdown ?? []).map((pm) => {
+                    const maxPay = Math.max(1, ...(data.paymentBreakdown ?? []).map((x) => x.revenueInKurus));
+                    const pct = data.commerce.revenueInKurus
+                      ? Math.round((pm.revenueInKurus / data.commerce.revenueInKurus) * 100)
+                      : 0;
+                    return (
+                      <div key={pm.method}>
+                        <span>
+                          <strong>{pm.label}</strong>
+                          <small>{pm.count} işlem · {money(pm.revenueInKurus)} (%{pct})</small>
+                        </span>
+                        <i><b style={{ width: `${maxPay ? (pm.revenueInKurus / maxPay) * 100 : 0}%` }} /></i>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            </div>
+
+            <article className="admin-analytics-panel">
+              <header>
+                <div><span>SAATLİK YOĞUNLUK</span><h2>Günün en yoğun sipariş saatleri (08:00 – 23:00)</h2></div>
+              </header>
+              <div className="admin-peak-hours">
+                {(data.peakHours ?? []).map((slot) => {
+                  const maxH = Math.max(1, ...(data.peakHours ?? []).map((h) => h.orders));
+                  const pct = slot.orders ? Math.max(10, Math.round((slot.orders / maxH) * 100)) : 0;
+                  return (
+                    <div key={slot.hour} className="admin-peak-hour-col" title={`${String(slot.hour).padStart(2, "0")}:00 · ${slot.orders} sipariş`}>
+                      <span className="admin-peak-count">{slot.orders || ""}</span>
+                      <div className="admin-peak-bar-track">
+                        <i style={{ height: `${pct}%` }} />
+                      </div>
+                      <small>{String(slot.hour).padStart(2, "0")}</small>
+                    </div>
+                  );
+                })}
               </div>
             </article>
 
