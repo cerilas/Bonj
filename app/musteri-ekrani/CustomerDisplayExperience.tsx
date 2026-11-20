@@ -146,6 +146,17 @@ export function CustomerDisplayExperience() {
 
       {state.mode === "idle" && (
         <section className="cd-idle">
+          <video
+            className="cd-idle-video"
+            src="/videos/customer-screen-video.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+          />
+          <div className="cd-idle-scrim" aria-hidden="true" />
           <div className="cd-idle-card">
             <BrandLogo className="cd-idle-logo" alt="bonj" />
             <span className="cd-eyebrow">GAZİANTEP · PASTANE &amp; KAHVE</span>

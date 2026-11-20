@@ -48,3 +48,6 @@ tsconfig.tsbuildinfo
 /package 2.json
 /app/layout 2.tsx
 /bonj-video.mp4
+
+# Original uncompressed customer display source video
+/customer-screen-video.MP4
