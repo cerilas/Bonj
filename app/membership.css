@@ -97,6 +97,7 @@ html[data-theme="light"] .bonj-auth-hero p {
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-y: auto;
   background: rgba(10, 7, 9, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -176,6 +177,7 @@ html[data-theme="dark"] .bonj-auth-close {
 
 .bonj-auth-logo {
   width: 76px;
+  height: 76px;
   margin: 0 auto 14px;
 }
 
