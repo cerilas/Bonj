@@ -15,6 +15,42 @@ type VerifyResult = {
   transactionId?: string;
 };
 
+function formatTurkishPaymentError(raw?: string | null, code?: string | null): string {
+  const text = (raw ?? "").trim();
+  const lower = text.toLowerCase();
+
+  if (!text || lower === "failed" || lower === "fail" || lower === "error") {
+    return code
+      ? `Banka veya 3D Secure onayı alınamadı (Kod: ${code}). Kart bilgilerinizi, limitinizi ve internet alışverişi yetkinizi kontrol edin.`
+      : "Banka veya 3D Secure onayı alınamadı. Kart bilgilerinizi, limitinizi ve internet alışverişi yetkinizi kontrol edin.";
+  }
+  if (lower.includes("cancel")) {
+    return "Ödeme işlemi iptal edildi.";
+  }
+  if (lower.includes("insufficient") || lower.includes("not sufficient") || lower.includes("limit")) {
+    return "Kart bakiyeniz veya limitiniz yetersiz.";
+  }
+  if (lower.includes("expired") || lower.includes("expiry")) {
+    return "Kartınızın son kullanma tarihi geçersiz veya süresi dolmuş.";
+  }
+  if (lower.includes("cvv") || lower.includes("cvc") || lower.includes("security code")) {
+    return "Güvenlik kodu (CVV) hatalı.";
+  }
+  if (lower.includes("invalid card") || lower.includes("card number")) {
+    return "Kart numarası geçersiz.";
+  }
+  if (lower.includes("3d") || lower.includes("authentication") || lower.includes("otp")) {
+    return "3D Secure SMS doğrulaması tamamlanamadı.";
+  }
+  if (lower.includes("do not honor") || lower.includes("declined") || lower.includes("not permitted")) {
+    return "İşlem bankanız tarafından reddedildi (internet alışverişi kapalı veya banka onayı yok).";
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return "Banka yanıt süresi doldu. Lütfen tekrar deneyin.";
+  }
+  return code ? `${text} (Kod: ${code})` : text;
+}
+
 async function verifyPayment(orderId: string): Promise<VerifyResult> {
   try {
     const token = await getHalkodeToken();
@@ -124,13 +160,17 @@ async function handleCallback(request: NextRequest) {
 
     const verification = await verifyPayment(orderId);
     const isPaid = verification.paid;
-    const finalReason =
+    const rawErrorCode =
+      (rawPayload.error_code as string) ||
+      (rawPayload.md_status as string) ||
+      (rawPayload.status_code && String(rawPayload.status_code) !== "100"
+        ? String(rawPayload.status_code)
+        : null);
+    const rawDetail =
       verification.detail && verification.detail !== "Failed"
         ? verification.detail
         : reason;
-    if (finalReason) {
-      failedUrl.searchParams.set("reason", finalReason);
-    }
+    failedUrl.searchParams.set("reason", formatTurkishPaymentError(rawDetail, rawErrorCode));
 
     const db = getDb();
     const [order] = await db
