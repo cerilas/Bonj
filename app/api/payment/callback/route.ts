@@ -9,7 +9,13 @@ import {
   sendConfiguredAdminNotification,
 } from "@/lib/admin-notifications";
 
-async function verifyPayment(orderId: string): Promise<boolean> {
+type VerifyResult = {
+  paid: boolean;
+  detail?: string;
+  transactionId?: string;
+};
+
+async function verifyPayment(orderId: string): Promise<VerifyResult> {
   try {
     const token = await getHalkodeToken();
     const merchantKey = getHalkodeMerchantKey();
@@ -28,11 +34,30 @@ async function verifyPayment(orderId: string): Promise<boolean> {
       }),
     });
 
-    const result = await response.json();
-    return result.status_code === 100 && result.transaction_status === "Completed";
+    const result = (await response.json()) as Record<string, unknown>;
+    console.info("[HalkÖde CheckStatus]", orderId, JSON.stringify(result));
+
+    const statusCode = Number(result.status_code);
+    const txStatus = String(result.transaction_status ?? "").toLowerCase();
+    const paid =
+      statusCode === 100 &&
+      (txStatus === "completed" || txStatus === "approved" || txStatus === "success");
+
+    const detail =
+      (result.original_bank_error_description as string) ||
+      (result.error_description as string) ||
+      (result.status_description as string) ||
+      undefined;
+
+    const transactionId =
+      (result.order_no as string) ||
+      (result.transaction_id as string) ||
+      undefined;
+
+    return { paid, detail, transactionId };
   } catch (error) {
     console.error("Payment verification failed:", error);
-    return false;
+    return { paid: false };
   }
 }
 
@@ -40,41 +65,72 @@ async function handleCallback(request: NextRequest) {
   try {
     let orderId: string | null = null;
     let reason: string | null = null;
+    const rawPayload: Record<string, unknown> = {};
 
     if (request.method === "POST") {
       const isJson = request.headers.get("content-type")?.includes("application/json");
       if (isJson) {
-        const body = await request.json();
-        orderId = body.invoice_id || body.orderId;
-        reason = body.status_description || body.error || body.original_bank_error_description;
+        const body = (await request.json()) as Record<string, unknown>;
+        Object.assign(rawPayload, body);
+        orderId = String(body.invoice_id || body.orderId || body.order_id || "") || null;
+        reason =
+          (body.original_bank_error_description as string) ||
+          (body.error_description as string) ||
+          (body.error as string) ||
+          (body.status_description as string) ||
+          null;
       } else {
         const formData = await request.formData();
-        orderId = (formData.get("invoice_id") as string) || (formData.get("orderId") as string);
+        for (const [k, v] of formData.entries()) {
+          if (typeof v === "string") rawPayload[k] = v;
+        }
+        orderId =
+          (formData.get("invoice_id") as string) ||
+          (formData.get("orderId") as string) ||
+          (formData.get("order_id") as string) ||
+          null;
         reason =
-          (formData.get("status_description") as string) ||
+          (formData.get("original_bank_error_description") as string) ||
+          (formData.get("error_description") as string) ||
           (formData.get("error") as string) ||
-          (formData.get("original_bank_error_description") as string);
+          (formData.get("status_description") as string) ||
+          null;
       }
     } else {
-      orderId = request.nextUrl.searchParams.get("invoice_id") || request.nextUrl.searchParams.get("orderId");
+      for (const [k, v] of request.nextUrl.searchParams.entries()) {
+        rawPayload[k] = v;
+      }
+      orderId =
+        request.nextUrl.searchParams.get("invoice_id") ||
+        request.nextUrl.searchParams.get("orderId") ||
+        request.nextUrl.searchParams.get("order_id");
       reason =
-        request.nextUrl.searchParams.get("status_description") ||
+        request.nextUrl.searchParams.get("original_bank_error_description") ||
+        request.nextUrl.searchParams.get("error_description") ||
         request.nextUrl.searchParams.get("error") ||
-        request.nextUrl.searchParams.get("original_bank_error_description");
+        request.nextUrl.searchParams.get("status_description");
     }
+
+    console.info("[HalkÖde Callback]", request.method, JSON.stringify(rawPayload));
 
     const baseUrl = notificationBaseUrl(request);
     const failedUrl = new URL("/sepet", baseUrl);
     failedUrl.searchParams.set("status", "failed");
-    if (reason) {
-      failedUrl.searchParams.set("reason", reason);
-    }
 
     if (!orderId) {
+      if (reason) failedUrl.searchParams.set("reason", reason);
       return NextResponse.redirect(failedUrl, { status: 303 });
     }
 
-    const isPaid = await verifyPayment(orderId);
+    const verification = await verifyPayment(orderId);
+    const isPaid = verification.paid;
+    const finalReason =
+      verification.detail && verification.detail !== "Failed"
+        ? verification.detail
+        : reason;
+    if (finalReason) {
+      failedUrl.searchParams.set("reason", finalReason);
+    }
 
     const db = getDb();
     const [order] = await db
@@ -88,7 +144,12 @@ async function handleCallback(request: NextRequest) {
         const wasAwaiting = order.status === "awaiting_payment";
         await db
           .update(orders)
-          .set({ paymentStatus: "paid", status: "new", updatedAt: new Date() })
+          .set({
+            paymentStatus: "paid",
+            status: "new",
+            transactionId: verification.transactionId ?? order.transactionId,
+            updatedAt: new Date(),
+          })
           .where(eq(orders.id, order.id));
 
         if (wasAwaiting) {
