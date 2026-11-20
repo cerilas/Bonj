@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { MenuItem } from "@/lib/menu";
 import { useCart } from "@/lib/use-cart";
@@ -24,6 +24,17 @@ export function MenuExperience({ items }: { items: MenuItem[] }) {
     return Array.from(unique, ([id, label]) => ({ id, label }));
   }, [items]);
   const [filter, setFilter] = useState("all");
+  const gridRef = useRef<HTMLElement>(null);
+
+  function selectCategory(next: string) {
+    setFilter(next);
+    if (gridRef.current) {
+      const rect = gridRef.current.getBoundingClientRect();
+      if (rect.top < 120) {
+        gridRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }
   const visibleItems =
     filter === "all" ? items : items.filter((item) => item.category === filter);
 
@@ -48,13 +59,13 @@ export function MenuExperience({ items }: { items: MenuItem[] }) {
       </section>
 
       <nav className="qr-menu-filters" aria-label="Menü kategorileri">
-        <button className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")} type="button">Hepsi</button>
+        <button className={filter === "all" ? "is-active" : ""} onClick={() => selectCategory("all")} type="button">Hepsi</button>
         {categories.map((category) => (
-          <button className={filter === category.id ? "is-active" : ""} onClick={() => setFilter(category.id)} type="button" key={category.id}>{category.label}</button>
+          <button className={filter === category.id ? "is-active" : ""} onClick={() => selectCategory(category.id)} type="button" key={category.id}>{category.label}</button>
         ))}
       </nav>
 
-      <section className="qr-product-grid" aria-live="polite">
+      <section ref={gridRef} className="qr-product-grid" style={{ scrollMarginTop: "136px" }} aria-live="polite">
         {visibleItems.map((item, index) => (
           <article className="qr-product" key={item.slug}>
             <div className={`qr-product-visual accent-${item.accent}`}>

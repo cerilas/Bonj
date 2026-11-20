@@ -84,6 +84,7 @@ body:has(.home-cart-float) .theme-toggle { bottom: 96px; }
 .qr-menu-page,
 .cart-page,
 .contact-page { padding-top: 78px; }
+.qr-menu-filters { top: 78px; z-index: 40; }
 
 html[data-theme="dark"] .public-site-header { border-color: rgba(255, 255, 255, 0.14); background: rgba(18, 14, 16, 0.88); color: #f2ecdf; }
 html[data-theme="dark"] .public-header-cart { border-color: rgba(255, 255, 255, 0.15); }
@@ -663,21 +664,24 @@ html[data-theme="dark"] .admin-api-code-head button.is-copied { color: #b6db7b; 
   .public-header-logo { width: 66px; height: 66px; transform: none; }
   .public-header-links,
   .public-header-instagram { display: none; }
-  .public-header-actions { gap: 12px; }
-  .public-header-cart { min-height: 32px; border-left: 0; padding-left: 0; }
+  .public-header-actions { gap: 8px; }
+  .public-header-user-btn { max-width: 114px; padding: 6px 10px; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .public-header-cart { min-height: 32px; border-left: 0; padding-left: 0; white-space: nowrap; }
   .public-header-menu-toggle { width: 38px; height: 38px; display: block; border: 0; background: transparent; color: currentColor; padding: 8px 4px; cursor: pointer; }
   .public-header-menu-toggle span { display: block; height: 1px; margin: 7px 0; background: currentColor; transition: transform 0.2s ease; }
   .public-header-menu-toggle[aria-expanded="true"] span:first-child { transform: translateY(4px) rotate(45deg); }
   .public-header-menu-toggle[aria-expanded="true"] span:last-child { transform: translateY(-4px) rotate(-45deg); }
-  .public-mobile-menu { position: fixed; z-index: 89; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 28px; background: #a91940; color: #fff; opacity: 0; visibility: hidden; transform: translateY(-16px); transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease; }
+  .public-mobile-menu { position: fixed; z-index: 89; top: 70px; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; justify-content: flex-start; padding: 20px 24px 72px; overflow-y: auto; background: #a91940; color: #fff; opacity: 0; visibility: hidden; transform: translateY(-12px); transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease; }
   .public-mobile-menu.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
   .public-mobile-menu nav { display: flex; flex-direction: column; }
   .public-mobile-menu nav a { padding: clamp(9px, 1.8vh, 14px) 0; border-bottom: 1px solid rgba(255, 255, 255, 0.2); font-family: var(--serif); font-size: clamp(25px, 8vw, 38px); letter-spacing: -0.04em; }
-  .public-mobile-instagram { position: absolute; bottom: 24px; display: inline-flex; align-items: center; gap: 8px; font-size: 8px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+  .public-mobile-instagram { margin-top: 24px; display: inline-flex; align-items: center; gap: 8px; font-size: 8px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
   .public-mobile-instagram svg { width: 18px; height: 18px; }
   .qr-menu-page,
   .cart-page,
   .contact-page { padding-top: 70px; }
+  .qr-menu-filters { top: 70px; z-index: 40; padding: 12px 16px; }
+  .qr-menu-filters button { min-height: 38px; padding: 8px 14px; font-size: 11px; }
   .public-location { padding: 44px 18px 18px; }
   .public-location-heading { align-items: flex-start; flex-direction: column; gap: 24px; margin-bottom: 22px; }
   .public-location-heading h2 { font-size: 52px; }

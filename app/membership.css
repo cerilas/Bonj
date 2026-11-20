@@ -1645,3 +1645,27 @@ html[data-theme="dark"] .public-header-user-btn {
   background: var(--berry-bright);
   color: #fff;
 }
+
+/* Mobile Responsiveness Polish */
+@media (max-width: 600px) {
+  .bonj-auth-card {
+    padding: 28px 20px;
+  }
+
+  .bonj-auth-phone-input-wrap input,
+  .bonj-auth-label input,
+  .bonj-modal-form input,
+  .bonj-modal-form select,
+  .bonj-modal-form textarea {
+    font-size: 16px;
+  }
+
+  .bonj-checkout-user-badge {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bonj-checkout-user-link {
+    margin-left: auto;
+  }
+}

@@ -136,9 +136,12 @@
   .cart-quantity { grid-column: 2; width: max-content; }
   .cart-line-total { grid-column: 3; grid-row: 1 / span 2; font-size: 17px; }
   .cart-total strong { font-size: 34px; }
-  .cart-checkout { margin-inline: -4px; width: calc(100% + 8px); padding-inline: 18px; }
-  .cart-fulfillment { grid-template-columns: 1fr; }
-  .cart-fulfillment button { min-height: 104px; }
+  .cart-checkout { margin-inline: 0; width: 100%; padding-inline: 18px; }
+  .cart-fulfillment { grid-template-columns: 1fr; gap: 8px; }
+  .cart-fulfillment button { min-height: 64px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 12px 38px 12px 14px; }
+  .cart-fulfillment button > span { margin-left: auto; text-align: right; }
+  .cart-customer-fields input,
+  .cart-customer-fields textarea { font-size: 16px; }
   .cart-pickup-field { padding: 13px; }
   .cart-loading,
   .cart-empty { width: calc(100% - 36px); }

@@ -32,7 +32,7 @@ body {
   color: var(--paper);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 button,
