@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { staffUsers } from "@/db/schema";
 import { getCurrentAdmin, hashPassword } from "@/lib/admin-auth";
 import { sendCerilasSms } from "@/lib/cerilas-sms";
+import { notificationBaseUrl } from "@/lib/admin-notifications";
 import { generateStaffPassword, staffRoleLabel } from "@/lib/staff-auth";
 
 export async function PATCH(
@@ -46,7 +47,7 @@ export async function PATCH(
       .set({ passwordHash, updatedAt: new Date() })
       .where(eq(staffUsers.id, staffId));
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bonjCakeStory.com";
+    const siteUrl = notificationBaseUrl(request);
     const smsMessage = `Merhaba ${staff.fullName}, Bonj Cake Story ${staffRoleLabel(staff.role)} yeni giriş şifreniz: ${rawPassword} · Giriş: ${siteUrl}/garson`;
 
     let smsSent = false;

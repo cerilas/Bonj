@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { orders } from "@/db/schema";
 import { getHalkodeToken, getHalkodeApiUrl, getHalkodeMerchantKey } from "@/lib/halkode";
+import { notificationBaseUrl } from "@/lib/admin-notifications";
 
 async function verifyPayment(orderId: string): Promise<boolean> {
   try {
@@ -58,14 +59,15 @@ async function handleCallback(request: NextRequest) {
         request.nextUrl.searchParams.get("original_bank_error_description");
     }
 
-    const failedUrl = new URL("/sepet", request.url);
+    const baseUrl = notificationBaseUrl(request);
+    const failedUrl = new URL("/sepet", baseUrl);
     failedUrl.searchParams.set("status", "failed");
     if (reason) {
       failedUrl.searchParams.set("reason", reason);
     }
 
     if (!orderId) {
-      return NextResponse.redirect(failedUrl);
+      return NextResponse.redirect(failedUrl, { status: 303 });
     }
 
     const isPaid = await verifyPayment(orderId);
@@ -76,17 +78,22 @@ async function handleCallback(request: NextRequest) {
         .update(orders)
         .set({ paymentStatus: "paid", status: "new" }) // Mark as new for fulfillment
         .where(eq(orders.orderNumber, orderId));
-      return NextResponse.redirect(new URL(`/sepet?status=success&orderNumber=${orderId}`, request.url));
+      return NextResponse.redirect(
+        new URL(`/sepet?status=success&orderNumber=${encodeURIComponent(orderId)}`, baseUrl),
+        { status: 303 },
+      );
     } else {
       await db
         .update(orders)
         .set({ paymentStatus: "failed" })
         .where(eq(orders.orderNumber, orderId));
-      return NextResponse.redirect(failedUrl);
+      return NextResponse.redirect(failedUrl, { status: 303 });
     }
   } catch (error) {
     console.error("Callback handler error:", error);
-    return NextResponse.redirect(new URL("/sepet?status=failed", request.url));
+    return NextResponse.redirect(new URL("/sepet?status=failed", notificationBaseUrl(request)), {
+      status: 303,
+    });
   }
 }
 

@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { categories, menuItems, orderItems, orders, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/user-auth";
 import {
+  notificationBaseUrl,
   reportNotificationError,
   sendConfiguredAdminNotification,
 } from "@/lib/admin-notifications";
@@ -231,9 +232,7 @@ export async function POST(request: Request) {
       throw new Error("Lütfen kredi kartı bilgilerinizi eksiksiz girin.");
     }
 
-    const protocol = request.headers.get("x-forwarded-proto") ?? "https";
-    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (host ? `${protocol}://${host}` : "http://localhost:3000");
+    const siteUrl = notificationBaseUrl(request);
 
     const returnUrl = `${siteUrl}/api/payment/callback`;
     const cancelUrl = `${siteUrl}/api/payment/callback`;

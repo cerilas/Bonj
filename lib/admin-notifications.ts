@@ -21,6 +21,8 @@ function externalOrigin(value: string | null | undefined) {
       hostname === "127.0.0.1" ||
       hostname === "0.0.0.0" ||
       hostname === "::1" ||
+      hostname === "example.com" ||
+      hostname === "railway-domainin.up.railway.app" ||
       hostname.endsWith(".railway.internal");
     return isInternal ? null : url.origin;
   } catch {
@@ -37,9 +39,9 @@ export function notificationBaseUrl(request: Request) {
   const configuredOrigin = externalOrigin(configuredUrl);
   const requestOrigin = externalOrigin(host ? `${protocol}://${host}` : null);
 
-  if (configuredOrigin) return configuredOrigin;
   if (requestOrigin) return requestOrigin;
-  return configuredUrl || (host ? `${protocol}://${host}` : new URL(request.url).origin);
+  if (configuredOrigin) return configuredOrigin;
+  return "https://bonjcakestory.com";
 }
 
 export function notificationShortUrl(request: Request, type: NotificationType, itemId?: number) {

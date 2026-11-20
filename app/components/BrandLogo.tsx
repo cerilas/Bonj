@@ -14,10 +14,10 @@ export function BrandLogo({
   return (
     <Image
       className={`bonj-brand-logo ${className}`.trim()}
-      src="/bonj-logo2.svg"
+      src="/bonj-logo.png"
       alt={alt}
-      width={1920}
-      height={1920}
+      width={1024}
+      height={1024}
       priority={priority}
       unoptimized
     />

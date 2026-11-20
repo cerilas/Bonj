@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { staffUsers } from "@/db/schema";
 import { getCurrentAdmin, hashPassword } from "@/lib/admin-auth";
 import { normalizeSmsPhone, sendCerilasSms } from "@/lib/cerilas-sms";
+import { notificationBaseUrl } from "@/lib/admin-notifications";
 import { generateStaffPassword, staffRoleLabel } from "@/lib/staff-auth";
 
 export async function GET() {
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
       createdAt: staffUsers.createdAt,
     });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bonjcakestory.com";
+  const siteUrl = notificationBaseUrl(request);
   const smsMessage = `Merhaba ${fullName}, Bonj Cake Story ${staffRoleLabel(role)} paneli giriş şifreniz: ${rawPassword} · Giriş: ${siteUrl}/garson`;
 
   let smsSent = false;
