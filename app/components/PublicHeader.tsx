@@ -29,7 +29,7 @@ export function PublicHeader() {
         </Link>
 
         <nav className="public-header-links" aria-label="Sayfa bölümleri">
-          <Link href="/#menu">Menü</Link>
+          <Link href="/menu">Menü</Link>
           <Link href="/#brunch">Brunch</Link>
           <Link href="/catering">Catering</Link>
           <Link href="/#hikaye">Hikâyemiz</Link>
@@ -68,7 +68,7 @@ export function PublicHeader() {
 
       <div className={`public-mobile-menu ${isOpen ? "is-open" : ""}`} id="public-mobile-navigation" aria-hidden={!isOpen}>
         <nav aria-label="Mobil navigasyon">
-          <Link href="/#menu" onClick={closeMenu}>01 — Menü</Link>
+          <Link href="/menu" onClick={closeMenu}>01 — Menü</Link>
           <Link href="/#brunch" onClick={closeMenu}>02 — Brunch</Link>
           <Link href="/catering" onClick={closeMenu}>03 — Catering</Link>
           <Link href="/#hikaye" onClick={closeMenu}>04 — Hikâyemiz</Link>
