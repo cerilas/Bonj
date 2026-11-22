@@ -121,7 +121,7 @@ export function AdminTablesPanel({
   const [showAddTable, setShowAddTable] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newTableCode, setNewTableCode] = useState("");
-  const [newTableZone, setNewTableZone] = useState("Indoor");
+  const [newTableZone, setNewTableZone] = useState("Salon");
   const [newTableCap, setNewTableCap] = useState("4");
 
   // Catalog search & category
@@ -513,7 +513,7 @@ export function AdminTablesPanel({
         body: JSON.stringify({
           name: newTableName.trim(),
           code: newTableCode.trim() || undefined,
-          zone: newTableZone.trim() || "Indoor",
+          zone: newTableZone.trim() || "Salon",
           capacity: Number(newTableCap) || 4,
         }),
       });
@@ -772,7 +772,7 @@ export function AdminTablesPanel({
           />
           <input
             type="text"
-            placeholder="Bölge (Indoor / Bahçe / Teras)"
+            placeholder="Bölge (Salon / Bahçe / Teras)"
             value={newTableZone}
             onChange={(e) => setNewTableZone(e.target.value)}
           />

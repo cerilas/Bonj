@@ -123,7 +123,7 @@ const defaultTablesSeed = [
     return {
       code: String(n),
       name: `Masa ${n}`,
-      zone: "Indoor",
+      zone: "Salon",
       capacity: INDOOR_LEGACY_CAPACITIES[n] ?? 4,
       sortOrder: n,
     };
@@ -168,26 +168,26 @@ export async function ensureDefaultCafeTables() {
         .onConflictDoNothing({ target: cafeTables.code });
     }
 
-    // Upgrade legacy "Salon" indoor tables and realign Bahçe sort order
-    const legacySalonCodes: string[] = [];
+    // Realign seeded Salon zone (e.g. migrate any "Indoor" rows to "Salon") and Bahçe sort order
+    const toSalonCodes: string[] = [];
     const misalignedRows: Array<{ id: number; sortOrder: number }> = [];
 
     for (const seed of defaultTablesSeed) {
       const current = byCode.get(seed.code);
       if (!current) continue;
-      if (seed.zone === "Indoor" && current.zone === "Salon") {
-        legacySalonCodes.push(seed.code);
+      if (seed.zone === "Salon" && current.zone !== "Salon") {
+        toSalonCodes.push(seed.code);
       }
       if (current.sortOrder !== seed.sortOrder && current.sortOrder <= 12) {
         misalignedRows.push({ id: current.id, sortOrder: seed.sortOrder });
       }
     }
 
-    if (legacySalonCodes.length > 0) {
+    if (toSalonCodes.length > 0) {
       await db
         .update(cafeTables)
-        .set({ zone: "Indoor", updatedAt: new Date() })
-        .where(inArray(cafeTables.code, legacySalonCodes));
+        .set({ zone: "Salon", updatedAt: new Date() })
+        .where(inArray(cafeTables.code, toSalonCodes));
     }
 
     for (const row of misalignedRows) {
@@ -397,7 +397,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
       ...mapSession(row),
       tableCode: t?.code ?? String(row.tableId),
       tableName: t?.name ?? `Masa #${row.tableId}`,
-      tableZone: t?.zone ?? "Indoor",
+      tableZone: t?.zone ?? "Salon",
     };
   });
 
