@@ -690,8 +690,6 @@ html[data-theme="dark"] .admin-api-code-head button.is-copied { color: #b6db7b; 
   .qr-menu-page,
   .cart-page,
   .contact-page { padding-top: 70px; }
-  .qr-menu-filters { top: 70px; z-index: 40; padding: 12px 16px; }
-  .qr-menu-filters button { min-height: 38px; padding: 8px 14px; font-size: 11px; }
   .public-location { padding: 44px 18px 18px; }
   .public-location-heading { align-items: flex-start; flex-direction: column; gap: 24px; margin-bottom: 22px; }
   .public-location-heading h2 { font-size: 52px; }

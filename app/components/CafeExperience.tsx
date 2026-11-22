@@ -234,7 +234,7 @@ export function CafeExperience({
         </a>
 
         <nav className="desktop-nav" aria-label="Sayfa bölümleri">
-          <a href="#menu">Menü</a>
+          <a href="/menu">Menü</a>
           <a href="#brunch">Brunch</a>
           <a href="#hikaye">Hikâyemiz</a>
           <a href="#mekan">Mekân</a>
@@ -272,7 +272,7 @@ export function CafeExperience({
         aria-hidden={!menuOpen}
       >
         <nav aria-label="Mobil navigasyon">
-          <a href="#menu" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>01 — Menü</a>
+          <a href="/menu" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>01 — Menü</a>
           <a href="#brunch" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>02 — Brunch</a>
           <a href="#hikaye" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>03 — Hikâyemiz</a>
           <a href="#mekan" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>04 — Mekân</a>
@@ -317,7 +317,7 @@ export function CafeExperience({
             merak uyandırmak için tasarlandı.
           </p>
           <div className="hero-actions">
-            <a className="button button-primary" href="#menu">
+            <a className="button button-primary" href="/menu">
               Menüye dal
               <span aria-hidden="true"><UiIcon name="arrow-down-right" /></span>
             </a>
