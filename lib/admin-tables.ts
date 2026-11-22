@@ -98,42 +98,113 @@ export type AdminTablesSnapshot = {
   };
 };
 
+const INDOOR_LEGACY_CAPACITIES: Record<number, number> = {
+  1: 2,
+  2: 2,
+  3: 4,
+  4: 4,
+  5: 4,
+  6: 6,
+  7: 4,
+  8: 4,
+};
+
+const BAHCE_LEGACY_CAPACITIES: Record<number, number> = {
+  1: 4,
+  2: 4,
+  3: 6,
+  4: 2,
+};
+
 const defaultTablesSeed = [
   { code: "KASA", name: "Ayakta / Kasa", zone: "Kasa", capacity: 1, sortOrder: 0 },
-  { code: "1", name: "Masa 1", zone: "Salon", capacity: 2, sortOrder: 1 },
-  { code: "2", name: "Masa 2", zone: "Salon", capacity: 2, sortOrder: 2 },
-  { code: "3", name: "Masa 3", zone: "Salon", capacity: 4, sortOrder: 3 },
-  { code: "4", name: "Masa 4", zone: "Salon", capacity: 4, sortOrder: 4 },
-  { code: "5", name: "Masa 5", zone: "Salon", capacity: 4, sortOrder: 5 },
-  { code: "6", name: "Masa 6", zone: "Salon", capacity: 6, sortOrder: 6 },
-  { code: "7", name: "Masa 7", zone: "Salon", capacity: 4, sortOrder: 7 },
-  { code: "8", name: "Masa 8", zone: "Salon", capacity: 4, sortOrder: 8 },
-  { code: "B1", name: "Bahçe 1", zone: "Bahçe", capacity: 4, sortOrder: 9 },
-  { code: "B2", name: "Bahçe 2", zone: "Bahçe", capacity: 4, sortOrder: 10 },
-  { code: "B3", name: "Bahçe 3", zone: "Bahçe", capacity: 6, sortOrder: 11 },
-  { code: "B4", name: "Bahçe 4", zone: "Bahçe", capacity: 2, sortOrder: 12 },
+  ...Array.from({ length: 20 }, (_, idx) => {
+    const n = idx + 1;
+    return {
+      code: String(n),
+      name: `Masa ${n}`,
+      zone: "Indoor",
+      capacity: INDOOR_LEGACY_CAPACITIES[n] ?? 4,
+      sortOrder: n,
+    };
+  }),
+  ...Array.from({ length: 40 }, (_, idx) => {
+    const n = idx + 1;
+    return {
+      code: `B${n}`,
+      name: `Bahçe ${n}`,
+      zone: "Bahçe",
+      capacity: BAHCE_LEGACY_CAPACITIES[n] ?? 4,
+      sortOrder: 20 + n,
+    };
+  }),
 ];
 
+let defaultTablesEnsured = false;
+let ensureTablesInFlight: Promise<void> | null = null;
+
 export async function ensureDefaultCafeTables() {
-  const db = getDb();
-  const existing = await db
-    .select({ id: cafeTables.id })
-    .from(cafeTables)
-    .limit(1);
+  if (defaultTablesEnsured) return;
+  if (ensureTablesInFlight) return ensureTablesInFlight;
 
-  if (existing.length > 0) {
-    // Ensure the walk-in / quick takeaway KASA station also exists on older databases
-    await db
-      .insert(cafeTables)
-      .values(defaultTablesSeed[0])
-      .onConflictDoNothing({ target: cafeTables.code });
-    return;
+  ensureTablesInFlight = (async () => {
+    const db = getDb();
+    const existingRows = await db
+      .select({
+        id: cafeTables.id,
+        code: cafeTables.code,
+        zone: cafeTables.zone,
+        sortOrder: cafeTables.sortOrder,
+      })
+      .from(cafeTables);
+
+    const byCode = new Map(existingRows.map((row) => [row.code, row]));
+    const missing = defaultTablesSeed.filter((seed) => !byCode.has(seed.code));
+
+    if (missing.length > 0) {
+      await db
+        .insert(cafeTables)
+        .values(missing)
+        .onConflictDoNothing({ target: cafeTables.code });
+    }
+
+    // Upgrade legacy "Salon" indoor tables and realign Bahçe sort order
+    const legacySalonCodes: string[] = [];
+    const misalignedRows: Array<{ id: number; sortOrder: number }> = [];
+
+    for (const seed of defaultTablesSeed) {
+      const current = byCode.get(seed.code);
+      if (!current) continue;
+      if (seed.zone === "Indoor" && current.zone === "Salon") {
+        legacySalonCodes.push(seed.code);
+      }
+      if (current.sortOrder !== seed.sortOrder && current.sortOrder <= 12) {
+        misalignedRows.push({ id: current.id, sortOrder: seed.sortOrder });
+      }
+    }
+
+    if (legacySalonCodes.length > 0) {
+      await db
+        .update(cafeTables)
+        .set({ zone: "Indoor", updatedAt: new Date() })
+        .where(inArray(cafeTables.code, legacySalonCodes));
+    }
+
+    for (const row of misalignedRows) {
+      await db
+        .update(cafeTables)
+        .set({ sortOrder: row.sortOrder, updatedAt: new Date() })
+        .where(eq(cafeTables.id, row.id));
+    }
+
+    defaultTablesEnsured = true;
+  })();
+
+  try {
+    await ensureTablesInFlight;
+  } finally {
+    ensureTablesInFlight = null;
   }
-
-  await db
-    .insert(cafeTables)
-    .values(defaultTablesSeed)
-    .onConflictDoNothing({ target: cafeTables.code });
 }
 
 function normalizeTableMatch(value: string | null | undefined): string {
@@ -326,7 +397,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
       ...mapSession(row),
       tableCode: t?.code ?? String(row.tableId),
       tableName: t?.name ?? `Masa #${row.tableId}`,
-      tableZone: t?.zone ?? "Salon",
+      tableZone: t?.zone ?? "Indoor",
     };
   });
 
@@ -344,7 +415,8 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
     }
   }
 
-  const openTables = tables.filter((t) => t.activeSession !== null || t.onlineOrders.length > 0).length;
+  const diningTables = tables.filter((t) => t.code !== "KASA");
+  const openTables = diningTables.filter((t) => t.activeSession !== null || t.onlineOrders.length > 0).length;
   const openTotalInKurus = tables.reduce((sum, t) => {
     const posTotal = t.activeSession?.subtotalInKurus ?? 0;
     const qrTotal = t.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0);
@@ -355,7 +427,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
     tables,
     recentClosed: recentClosed.slice(0, 10),
     summary: {
-      totalTables: tables.length,
+      totalTables: diningTables.length,
       openTables,
       openTotalInKurus,
       todayCashInKurus,

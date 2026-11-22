@@ -111,7 +111,7 @@ export function AdminTablesPanel({
   const [showAddTable, setShowAddTable] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newTableCode, setNewTableCode] = useState("");
-  const [newTableZone, setNewTableZone] = useState("Salon");
+  const [newTableZone, setNewTableZone] = useState("Indoor");
   const [newTableCap, setNewTableCap] = useState("4");
 
   // Catalog search & category
@@ -134,8 +134,9 @@ export function AdminTablesPanel({
   const [closeOnlineOrders, setCloseOnlineOrders] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // Receipt preview modal
+  // Receipt preview & recent closed history modal
   const [previewReceipt, setPreviewReceipt] = useState<PosPrintReceiptData | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const paidHoldUntilRef = useRef<number>(0);
 
   const loadSnapshot = useCallback(async () => {
@@ -182,10 +183,13 @@ export function AdminTablesPanel({
     }
   }, [focusTableId, loadSnapshot, onFocusTableHandled]);
 
-  const zones = useMemo(() => {
-    if (!snapshot) return ["all"];
-    const set = new Set(snapshot.tables.map((t) => t.zone));
-    return ["all", ...Array.from(set)];
+  const { zones, zoneCounts } = useMemo(() => {
+    if (!snapshot) return { zones: ["all"], zoneCounts: new Map<string, number>() };
+    const counts = new Map<string, number>();
+    for (const t of snapshot.tables) {
+      counts.set(t.zone, (counts.get(t.zone) ?? 0) + 1);
+    }
+    return { zones: ["all", ...Array.from(counts.keys())], zoneCounts: counts };
   }, [snapshot]);
 
   const visibleTables = useMemo(() => {
@@ -499,7 +503,7 @@ export function AdminTablesPanel({
         body: JSON.stringify({
           name: newTableName.trim(),
           code: newTableCode.trim() || undefined,
-          zone: newTableZone.trim() || "Salon",
+          zone: newTableZone.trim() || "Indoor",
           capacity: Number(newTableCap) || 4,
         }),
       });
@@ -677,7 +681,9 @@ export function AdminTablesPanel({
                 className={zoneFilter === z ? "is-current" : ""}
                 onClick={() => setZoneFilter(z)}
               >
-                {z === "all" ? "Tüm Bölgeler" : z}
+                {z === "all"
+                  ? `Tüm Bölgeler (${snapshot?.summary.totalTables ?? 0})`
+                  : `${z} (${zoneCounts.get(z) ?? 0})`}
               </button>
             ))}
           </div>
@@ -725,6 +731,11 @@ export function AdminTablesPanel({
               {showAddTable ? "Vazgeç" : "+ Masa Ekle"}
             </button>
           )}
+          {snapshot && snapshot.recentClosed.length > 0 && (
+            <button type="button" onClick={() => setShowHistoryModal(true)}>
+              Son Kapananlar ({snapshot.recentClosed.length})
+            </button>
+          )}
           <button type="button" onClick={() => void loadSnapshot()}>
             Yenile
           </button>
@@ -751,7 +762,7 @@ export function AdminTablesPanel({
           />
           <input
             type="text"
-            placeholder="Bölge (Salon / Bahçe / Teras)"
+            placeholder="Bölge (Indoor / Bahçe / Teras)"
             value={newTableZone}
             onChange={(e) => setNewTableZone(e.target.value)}
           />
@@ -1290,44 +1301,62 @@ export function AdminTablesPanel({
         </aside>
       </div>
 
-      {snapshot && snapshot.recentClosed.length > 0 && (
-        <div className="admin-pos-history">
-          <h4>Son Kapanan Masalar</h4>
-          <div className="admin-pos-history-list">
-            {snapshot.recentClosed.map((s: AdminClosedTableSession) => (
-              <div key={s.id} className="admin-pos-history-row">
-                <div>
-                  <strong>{s.tableName}</strong>
-                  <small>
-                    {formatTime(s.openedAt)} → {s.closedAt ? formatTime(s.closedAt) : "—"} · {posPaymentLabel(s.paymentMethod)}
-                  </small>
+      {showHistoryModal && snapshot && snapshot.recentClosed.length > 0 && (
+        <div
+          className="admin-pos-receipt-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Son Kapanan Masalar"
+          onClick={() => setShowHistoryModal(false)}
+        >
+          <div className="admin-pos-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-pos-history-modal-head">
+              <h4>Son Kapanan Masalar</h4>
+              <button
+                type="button"
+                className="admin-pos-secondary-btn"
+                onClick={() => setShowHistoryModal(false)}
+              >
+                Kapat
+              </button>
+            </div>
+            <div className="admin-pos-history-list">
+              {snapshot.recentClosed.map((s: AdminClosedTableSession) => (
+                <div key={s.id} className="admin-pos-history-row">
+                  <div>
+                    <strong>{s.tableName}</strong>
+                    <small>
+                      {formatTime(s.openedAt)} → {s.closedAt ? formatTime(s.closedAt) : "—"} · {posPaymentLabel(s.paymentMethod)}
+                    </small>
+                  </div>
+                  <div className="admin-pos-history-right">
+                    <b>{money(Math.max(0, s.subtotalInKurus - s.discountInKurus))}</b>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHistoryModal(false);
+                        openReceiptPreview({
+                          tableName: s.tableName,
+                          tableZone: s.tableZone,
+                          openedAt: s.openedAt,
+                          closedAt: s.closedAt,
+                          guestCount: s.guestCount,
+                          customerName: s.customerName,
+                          note: s.note,
+                          items: s.items,
+                          subtotalInKurus: s.subtotalInKurus,
+                          discountInKurus: s.discountInKurus,
+                          totalInKurus: Math.max(0, s.subtotalInKurus - s.discountInKurus),
+                          paymentMethod: s.paymentMethod,
+                        });
+                      }}
+                    >
+                      Fiş
+                    </button>
+                  </div>
                 </div>
-                <div className="admin-pos-history-right">
-                  <b>{money(Math.max(0, s.subtotalInKurus - s.discountInKurus))}</b>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openReceiptPreview({
-                        tableName: s.tableName,
-                        tableZone: s.tableZone,
-                        openedAt: s.openedAt,
-                        closedAt: s.closedAt,
-                        guestCount: s.guestCount,
-                        customerName: s.customerName,
-                        note: s.note,
-                        items: s.items,
-                        subtotalInKurus: s.subtotalInKurus,
-                        discountInKurus: s.discountInKurus,
-                        totalInKurus: Math.max(0, s.subtotalInKurus - s.discountInKurus),
-                        paymentMethod: s.paymentMethod,
-                      })
-                    }
-                  >
-                    Fiş
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

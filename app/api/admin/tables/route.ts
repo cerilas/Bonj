@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     const name = String(body.name ?? "").trim().slice(0, 60);
     const code = String(body.code ?? "").trim().slice(0, 20) || name.replace(/\s+/g, "");
-    const zone = String(body.zone ?? "Salon").trim().slice(0, 40) || "Salon";
+    const zone = String(body.zone ?? "Indoor").trim().slice(0, 40) || "Indoor";
     const capacity = Math.max(1, Math.min(30, Number(body.capacity ?? 4) || 4));
 
     if (!name || !code) {

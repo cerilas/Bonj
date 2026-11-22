@@ -2573,11 +2573,50 @@
 
 
 /* Cafe POS & Table Management (Light & Dark Mode Native) */
-.admin-pos-wrap {
+.admin-dashboard:has(#tables) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#tables.admin-main {
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+  padding: 20px clamp(20px, 3vw, 40px) 16px;
+  overflow: hidden;
+}
+
+#tables .admin-topbar {
+  min-height: 0;
+  flex: 0 0 auto;
+  gap: 16px;
+}
+
+#tables .admin-topbar h1 {
+  margin: 6px 0 0;
+  font-size: clamp(28px, 2.8vw, 40px);
+  line-height: 0.95;
+}
+
+.admin-pos-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
   color: var(--admin-ink);
+}
+
+.admin-pos-summary,
+.admin-pos-staff-summary,
+.admin-pos-toolbar,
+.admin-pos-add-table-form,
+.admin-pos-error,
+.admin-pos-notice {
+  flex: 0 0 auto;
 }
 
 .admin-pos-summary {
@@ -2731,21 +2770,47 @@ html[data-theme="light"] .admin-pos-notice {
 }
 
 .admin-pos-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(350px, 1fr);
-  gap: 16px;
-  align-items: start;
+  gap: 14px;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .admin-pos-grid {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel-strong);
+}
+
+.admin-pos-grid::-webkit-scrollbar,
+.admin-pos-drawer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-pos-grid::-webkit-scrollbar-thumb,
+.admin-pos-drawer::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--admin-line-strong);
 }
 
 .admin-pos-table-card {
   text-align: left;
-  padding: 14px;
+  padding: 11px 12px;
   border-radius: 12px;
   border: 1px solid var(--admin-line);
   background: var(--admin-panel);
@@ -2853,6 +2918,12 @@ html[data-theme="light"] .admin-pos-notice {
 }
 
 .admin-pos-drawer {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   border: 1px solid var(--admin-line);
   border-radius: 14px;
   background: var(--admin-panel);
@@ -3366,6 +3437,36 @@ html[data-theme="light"] .admin-pos-delete-table-btn {
   cursor: pointer;
 }
 
+.admin-pos-history-modal {
+  width: min(680px, 100%);
+  max-height: 85dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-pos-history-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-pos-history-modal-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-muted);
+}
+
 .admin-pos-empty {
   margin: 0;
   font-size: 13px;
@@ -3376,7 +3477,7 @@ html[data-theme="light"] .admin-pos-delete-table-btn {
 .admin-pos-receipt-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 100;
   background: rgba(12, 8, 10, 0.72);
   display: grid;
   place-items: center;
@@ -3529,13 +3630,15 @@ html[data-theme="light"] .admin-pos-delete-table-btn {
   gap: 8px;
 }
 
+@media (max-width: 1180px) {
+  .admin-pos-workspace {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  }
+}
+
 @media (max-width: 1080px) {
   .admin-pos-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-pos-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .admin-pos-add-table-form {
@@ -4048,20 +4151,20 @@ html[data-theme="dark"] .garson-login-card {
 .garson-dashboard {
   display: flex !important;
   flex-direction: column;
-  min-height: 100svh;
+  height: 100dvh;
   width: 100%;
-  overflow-x: clip;
+  overflow: hidden;
 }
 
 .garson-topbar {
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 45;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 60px;
+  min-height: 58px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--admin-line);
   background: var(--admin-panel);
@@ -4099,9 +4202,14 @@ html[data-theme="dark"] .garson-login-card {
 }
 
 .garson-main {
-  width: min(100%, 1320px);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: min(100%, 1400px);
   margin-inline: auto;
-  padding: 20px 14px 80px !important;
+  padding: 14px 16px 16px !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .admin-pos-staff-summary {
@@ -4139,7 +4247,7 @@ html[data-theme="dark"] .garson-login-card {
 
 @media (max-width: 900px) {
   .garson-main {
-    padding: 12px 12px 72px !important;
+    padding: 10px 12px 12px !important;
   }
 
   .admin-pos-filters-group {
@@ -4149,32 +4257,47 @@ html[data-theme="dark"] .garson-login-card {
     gap: 8px;
   }
 
-  .admin-pos-zones {
+  .admin-pos-zones,
+  .admin-pos-toolbar-actions {
+    width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 2px;
     scrollbar-width: none;
   }
 
-  .admin-pos-zones::-webkit-scrollbar {
+  .admin-pos-zones::-webkit-scrollbar,
+  .admin-pos-toolbar-actions::-webkit-scrollbar {
     display: none;
   }
 
-  .admin-pos-zones button {
+  .admin-pos-zones button,
+  .admin-pos-toolbar-actions button {
     flex: 0 0 auto;
-    min-height: 40px;
-    padding: 0 14px;
+    min-height: 38px;
+    padding: 0 12px;
     font-size: 12px;
   }
 
+  .admin-pos-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
   .admin-pos-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
+    padding: 6px;
   }
 
   .admin-pos-table-card {
-    min-height: 108px;
-    padding: 14px;
+    min-height: 92px;
+    padding: 12px;
   }
 
   .admin-pos-drawer:not(.has-selection) {
@@ -4184,7 +4307,8 @@ html[data-theme="dark"] .garson-login-card {
   .admin-pos-drawer.has-selection {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 95;
+    height: 100dvh;
     border-radius: 0;
     border: 0;
     padding: 0 14px 36px;
@@ -4241,6 +4365,50 @@ html[data-theme="dark"] .garson-login-card {
   .admin-pos-secondary-btn {
     min-height: 46px;
     font-size: 13px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-dashboard:has(#tables) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  #tables.admin-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 10px 12px 8px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  #tables .admin-topbar {
+    display: none;
+  }
+
+  #tables .admin-pos-summary {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 6px;
+  }
+
+  #tables .admin-pos-summary::-webkit-scrollbar {
+    display: none;
+  }
+
+  #tables .admin-pos-kpi {
+    flex: 0 0 auto;
+    min-width: 116px;
+    padding: 8px 10px;
+  }
+
+  #tables .admin-pos-kpi strong {
+    font-size: 15px;
   }
 }
 
