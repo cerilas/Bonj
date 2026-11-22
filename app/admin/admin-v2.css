@@ -2674,14 +2674,15 @@
 
 .admin-pos-zones button,
 .admin-pos-toolbar-actions button {
-  min-height: 36px;
-  padding: 0 13px;
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 8px;
   border: 1px solid var(--admin-line-strong);
   background: var(--admin-panel);
   color: var(--admin-ink);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -2788,10 +2789,10 @@ html[data-theme="light"] .admin-pos-notice {
   touch-action: pan-y;
   scrollbar-gutter: stable;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
   align-content: start;
-  gap: 8px;
-  padding: 8px;
+  gap: 10px;
+  padding: 10px;
   border-radius: 14px;
   border: 1px solid var(--admin-line);
   background: var(--admin-panel-strong);
@@ -2809,8 +2810,10 @@ html[data-theme="light"] .admin-pos-notice {
 }
 
 .admin-pos-table-card {
+  min-width: 0;
+  min-height: 122px;
   text-align: left;
-  padding: 11px 12px;
+  padding: 12px 13px;
   border-radius: 12px;
   border: 1px solid var(--admin-line);
   background: var(--admin-panel);
@@ -2818,7 +2821,8 @@ html[data-theme="light"] .admin-pos-notice {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 6px;
   transition: border-color 0.15s ease, transform 0.12s ease, background 0.15s ease;
 }
 
@@ -2848,6 +2852,8 @@ html[data-theme="light"] .admin-pos-notice {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .admin-pos-table-zone {
@@ -2856,15 +2862,21 @@ html[data-theme="light"] .admin-pos-notice {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--admin-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-pos-table-badge {
+  flex: 0 0 auto;
   font-size: 10px;
   font-weight: 800;
-  padding: 2px 8px;
+  line-height: 1.2;
+  padding: 3px 8px;
   border-radius: 999px;
   background: var(--admin-line);
   color: var(--admin-ink);
+  white-space: nowrap;
 }
 
 .admin-pos-table-card.is-open .admin-pos-table-badge {
@@ -2878,9 +2890,15 @@ html[data-theme="light"] .admin-pos-notice {
 }
 
 .admin-pos-table-name {
-  font-size: 17px;
+  display: block;
+  width: 100%;
+  font-size: 16px;
   font-weight: 800;
+  line-height: 1.25;
   color: var(--admin-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-pos-table-meta {
@@ -2888,33 +2906,68 @@ html[data-theme="light"] .admin-pos-notice {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
   font-size: 12px;
+  line-height: 1.2;
   color: var(--admin-muted);
+  white-space: nowrap;
 }
 
 .admin-pos-timer {
   font-weight: 700;
   color: var(--admin-accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-pos-guests,
+.admin-pos-status-hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-pos-status-hint {
+  font-size: 11px;
+  opacity: 0.72;
 }
 
 .admin-pos-table-total {
   margin-top: 2px;
-  padding-top: 8px;
+  padding-top: 7px;
   border-top: 1px dashed var(--admin-line);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-height: 27px;
+  white-space: nowrap;
 }
 
 .admin-pos-table-total strong {
   font-size: 15px;
+  font-weight: 800;
   color: var(--admin-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .admin-pos-table-total small {
   font-size: 11px;
   font-weight: 700;
   color: #f59e0b;
+  white-space: nowrap;
+}
+
+.admin-pos-table-idle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-muted);
+  opacity: 0.7;
+  white-space: nowrap;
 }
 
 .admin-pos-drawer {
@@ -4296,8 +4349,16 @@ html[data-theme="dark"] .garson-login-card {
   }
 
   .admin-pos-table-card {
-    min-height: 92px;
-    padding: 12px;
+    min-height: 112px;
+    padding: 11px 12px;
+  }
+
+  .admin-pos-table-name {
+    font-size: 15px;
+  }
+
+  .admin-pos-table-total strong {
+    font-size: 14px;
   }
 
   .admin-pos-drawer:not(.has-selection) {
@@ -4721,35 +4782,6 @@ html[data-theme="dark"] .garson-login-card {
 }
 
 /* POS Table & Register Controls (Touch-Friendly) */
-.admin-pos-zones button,
-.admin-pos-toolbar-actions button {
-  min-height: 44px;
-  padding: 0 16px;
-  font-size: 13px;
-}
-
-.admin-pos-table-card {
-  min-height: 118px;
-  padding: 16px;
-}
-
-.admin-pos-table-name {
-  font-size: 19px;
-}
-
-.admin-pos-table-badge {
-  font-size: 11px;
-  padding: 4px 10px;
-}
-
-.admin-pos-table-meta {
-  font-size: 13px;
-}
-
-.admin-pos-table-total strong {
-  font-size: 17px;
-}
-
 .admin-pos-bill-item {
   padding: 11px 12px;
 }

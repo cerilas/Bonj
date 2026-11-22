@@ -52,6 +52,16 @@ function formatDuration(openedAtIso: string, nowMs: number) {
   return `${secs} sn`;
 }
 
+function formatCompactDuration(openedAtIso: string, nowMs: number) {
+  const diffSec = Math.max(0, Math.floor((nowMs - new Date(openedAtIso).getTime()) / 1000));
+  const hours = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  const secs = diffSec % 60;
+  if (hours > 0) return `${hours}s ${String(mins).padStart(2, "0")}d`;
+  if (mins > 0) return `${mins} dk`;
+  return `${secs} sn`;
+}
+
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("tr-TR", {
     hour: "2-digit",
@@ -803,30 +813,39 @@ export function AdminTablesPanel({
                   <div className="admin-pos-table-head">
                     <span className="admin-pos-table-zone">{table.zone}</span>
                     <span className="admin-pos-table-badge">
-                      {isOpen ? "Açık" : hasQr ? "QR Sipariş" : "Boş"}
+                      {isOpen ? "Açık" : hasQr ? "QR" : "Boş"}
                     </span>
                   </div>
-                  <strong className="admin-pos-table-name">{table.name}</strong>
+                  <strong className="admin-pos-table-name" title={table.name}>{table.name}</strong>
                   <div className="admin-pos-table-meta">
                     {table.activeSession ? (
                       <>
                         <span className="admin-pos-timer">
-                          ⏱ {formatDuration(table.activeSession.openedAt, nowMs)}
+                          ⏱ {formatCompactDuration(table.activeSession.openedAt, nowMs)}
                         </span>
                         <span className="admin-pos-guests">
                           {table.activeSession.guestCount} kişi
                         </span>
                       </>
                     ) : (
-                      <span>{table.capacity} kişilik</span>
+                      <>
+                        <span className="admin-pos-guests">{table.capacity} kişilik</span>
+                        <span className="admin-pos-status-hint">
+                          {hasQr ? `${table.onlineOrders.length} QR` : "Hazır"}
+                        </span>
+                      </>
                     )}
                   </div>
-                  {(isOpen || hasQr) && (
-                    <div className="admin-pos-table-total">
-                      <strong>{money(totalKurus)}</strong>
-                      {hasQr && <small>QR ({table.onlineOrders.length})</small>}
-                    </div>
-                  )}
+                  <div className="admin-pos-table-total">
+                    {isOpen || hasQr ? (
+                      <>
+                        <strong>{money(totalKurus)}</strong>
+                        {hasQr && <small>QR ({table.onlineOrders.length})</small>}
+                      </>
+                    ) : (
+                      <span className="admin-pos-table-idle">Sipariş yok</span>
+                    )}
+                  </div>
                 </button>
               );
             })
