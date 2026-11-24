@@ -201,9 +201,16 @@ public static class BonjWin32 {
         if (IsIconic(hWnd)) {
             ShowWindow(hWnd, SW_RESTORE);
         }
-        SwitchToThisWindow(hWnd, true);
         BringWindowToTop(hWnd);
         SetForegroundWindow(hWnd);
+    }
+
+    public static bool IsWindowOnScreen(IntPtr hWnd, int sx, int sy, int sw, int sh) {
+        RECT r;
+        if (!GetWindowRect(hWnd, out r)) return false;
+        int cx = (r.Left + r.Right) / 2;
+        int cy = (r.Top + r.Bottom) / 2;
+        return cx >= sx && cx < (sx + sw) && cy >= sy && cy < (sy + sh);
     }
 
     public static void SendF11() {
@@ -285,7 +292,8 @@ function Launch-And-Place-Window {
     param(
         [string]$Url,
         [System.Windows.Forms.Screen]$Screen,
-        [string]$Label
+        [string]$Label,
+        [bool]$FullscreenApp = $true
     )
 
     $before = New-Object 'System.Collections.Generic.HashSet[IntPtr]'
@@ -297,28 +305,47 @@ function Launch-And-Place-Window {
     $by = $Screen.Bounds.Y
     $bw = $Screen.Bounds.Width
     $bh = $Screen.Bounds.Height
-    $ix = $bx + 30
-    $iy = $by + 30
-    $iw = [Math]::Max(800, $bw - 60)
-    $ih = [Math]::Max(600, $bh - 60)
+    $wx = $Screen.WorkingArea.X
+    $wy = $Screen.WorkingArea.Y
+    $ww = $Screen.WorkingArea.Width
+    $wh = $Screen.WorkingArea.Height
 
-    $args = @(
-        "--user-data-dir=`"$profileDir`"",
-        "--app=`"$Url`"",
-        "--new-window",
-        "--window-position=$ix,$iy",
-        "--window-size=$iw,$ih",
-        "--touch-events=enabled",
-        "--disable-pinch",
-        "--overscroll-history-navigation=0",
-        "--disable-features=TouchpadOverscrollHistoryNavigation",
-        "--autoplay-policy=no-user-gesture-required",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-session-crashed-bubble"
-    )
-    if ($kioskPrinting) {
-        $args += "--kiosk-printing"
+    if (-not $FullscreenApp) {
+        # Launch Admin POS as a regular Chrome browser window so Windows touch & scroll match normal Chrome 1:1
+        $args = @(
+            "--user-data-dir=`"$profileDir`"",
+            "--new-window",
+            "--window-position=$wx,$wy",
+            "--window-size=$ww,$wh",
+            "--start-maximized",
+            "--autoplay-policy=no-user-gesture-required",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-session-crashed-bubble",
+            "`"$Url`""
+        )
+        if ($kioskPrinting) {
+            $args += "--kiosk-printing"
+        }
+    } else {
+        $ix = $bx + 30
+        $iy = $by + 30
+        $iw = [Math]::Max(800, $bw - 60)
+        $ih = [Math]::Max(600, $bh - 60)
+        $args = @(
+            "--user-data-dir=`"$profileDir`"",
+            "--app=`"$Url`"",
+            "--new-window",
+            "--window-position=$ix,$iy",
+            "--window-size=$iw,$ih",
+            "--autoplay-policy=no-user-gesture-required",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-session-crashed-bubble"
+        )
+        if ($kioskPrinting) {
+            $args += "--kiosk-printing"
+        }
     }
 
     Start-Process -FilePath $chromePath -ArgumentList ($args -join " ") | Out-Null
@@ -339,6 +366,17 @@ function Launch-And-Place-Window {
     if ($newHwnd -eq [IntPtr]::Zero) {
         Write-Log "UYARI: $Label penceresi tespit edilemedi."
         return [IntPtr]::Zero
+    }
+
+    if (-not $FullscreenApp) {
+        Start-Sleep -Milliseconds 400
+        if (-not [BonjWin32]::IsWindowOnScreen($newHwnd, $bx, $by, $bw, $bh)) {
+            [void][BonjWin32]::MoveWindow($newHwnd, $wx, $wy, $ww, $wh, $true)
+            Start-Sleep -Milliseconds 120
+            [void][BonjWin32]::ShowWindow($newHwnd, 3) # SW_MAXIMIZE
+        }
+        Write-Log "$Label normal Chrome penceresi olarak acildi (HWND: $newHwnd)."
+        return $newHwnd
     }
 
     Start-Sleep -Milliseconds 500
@@ -370,13 +408,13 @@ function Launch-And-Place-Window {
     return $newHwnd
 }
 
-# 1. Launch Admin POS on Cashier Screen
-$cashierHwnd = Launch-And-Place-Window -Url $adminUrl -Screen $cashierScreen -Label "Admin POS"
+# 1. Launch Admin POS on Cashier Screen (normal browser window for 100% native touch compatibility)
+$cashierHwnd = Launch-And-Place-Window -Url $adminUrl -Screen $cashierScreen -Label "Admin POS" -FullscreenApp $false
 
-# 2. Launch Customer Display on Secondary Screen (if connected)
+# 2. Launch Customer Display on Secondary Screen (borderless F11 fullscreen)
 if ($customerScreen) {
     Start-Sleep -Milliseconds 600
-    $customerHwnd = Launch-And-Place-Window -Url $customerUrl -Screen $customerScreen -Label "Musteri Ekrani"
+    $customerHwnd = Launch-And-Place-Window -Url $customerUrl -Screen $customerScreen -Label "Musteri Ekrani" -FullscreenApp $true
 } else {
     Write-Log "UYARI: Ikinci ekran algilanmadi, sadece Kasa ekrani acildi."
 }

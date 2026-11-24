@@ -121,7 +121,6 @@ public static class BonjBridgeWin32 {
         if (IsIconic(hWnd)) {
             ShowWindow(hWnd, SW_RESTORE);
         }
-        SwitchToThisWindow(hWnd, true);
         BringWindowToTop(hWnd);
         SetForegroundWindow(hWnd);
     }
