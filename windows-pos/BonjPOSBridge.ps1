@@ -637,7 +637,8 @@ function Launch-PosChromeWindow {
 
 function Apply-ScreenPlacement {
     param(
-        [bool]$AllowReopen = $true
+        [bool]$AllowReopen = $true,
+        [bool]$IncludeCashier = $false
     )
 
     $cfg = Get-ConfigObject
@@ -690,47 +691,60 @@ function Apply-ScreenPlacement {
         }
     }
 
+    $prevFg = [BonjBridgeWin32]::GetForegroundWindow()
     $changed = $false
-    $cashierHandle = if ($cashierWin) { $cashierWin.Handle } else { [IntPtr]::Zero }
+    $customerHandle = if ($customerWin) { $customerWin.Handle } else { [IntPtr]::Zero }
 
-    if ($cashierWin) {
-        if (Ensure-WindowFullscreen -Handle $cashierWin.Handle -Screen $screens[$cIdx] -Label "Admin POS") {
+    # Only move/fullscreen Main Monitor (Admin POS) when explicitly triggered via /screens/apply, NEVER on watchdog
+    if ($IncludeCashier) {
+        if ($cashierWin) {
+            $sc = $screens[$cIdx]
+            $wa = $sc.WorkingArea
+            [BonjBridgeWin32]::ForceFocus($cashierWin.Handle)
+            Start-Sleep -Milliseconds 100
+            [void][BonjBridgeWin32]::MoveWindow($cashierWin.Handle, $wa.X, $wa.Y, $wa.Width, $wa.Height, $true)
+            [void][BonjBridgeWin32]::ShowWindow($cashierWin.Handle, 3) # SW_MAXIMIZE
             $changed = $true
-        }
-    } elseif ($AllowReopen) {
-        $now = Get-Date
-        if (($now - $script:lastCashierLaunchAt).TotalSeconds -ge 20) {
-            $script:lastCashierLaunchAt = $now
-            Write-BridgeLog "Watchdog: Admin POS penceresi kapali, yeniden aciliyor..."
-            $launched = Launch-PosChromeWindow -Url "$baseUrl$adminPath" -Screen $screens[$cIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Admin POS"
-            if ($launched -ne [IntPtr]::Zero) {
-                $cashierHandle = $launched
-                $changed = $true
-            }
-        }
-    }
-
-    if ($screens.Count -ge 2 -and $mIdx -ne $cIdx) {
-        if ($customerWin) {
-            if (Ensure-WindowFullscreen -Handle $customerWin.Handle -Screen $screens[$mIdx] -Label "Musteri Ekrani") {
-                $changed = $true
-            }
-        } elseif ($AllowReopen -and $targetWins.Count -lt 2) {
+        } elseif ($AllowReopen) {
             $now = Get-Date
-            if (($now - $script:lastCustomerLaunchAt).TotalSeconds -ge 15) {
-                $script:lastCustomerLaunchAt = $now
-                Write-BridgeLog "Watchdog: Musteri Ekrani kapali, 2. ekranda tam ekran aciliyor..."
-                $launchedCust = Launch-PosChromeWindow -Url "$baseUrl$customerPath" -Screen $screens[$mIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Musteri Ekrani"
-                if ($launchedCust -ne [IntPtr]::Zero) {
+            if (($now - $script:lastCashierLaunchAt).TotalSeconds -ge 20) {
+                $script:lastCashierLaunchAt = $now
+                Write-BridgeLog "Admin POS penceresi aciliyor..."
+                $launched = Launch-PosChromeWindow -Url "$baseUrl$adminPath" -Screen $screens[$cIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Admin POS"
+                if ($launched -ne [IntPtr]::Zero) {
                     $changed = $true
                 }
             }
         }
     }
 
-    if ($changed -and $cashierHandle -ne [IntPtr]::Zero) {
-        Start-Sleep -Milliseconds 150
-        [BonjBridgeWin32]::ForceFocus($cashierHandle)
+    # Customer Display (Screen 2) MUST always stay open and true fullscreen
+    if ($screens.Count -ge 2 -and $mIdx -ne $cIdx) {
+        if ($customerWin) {
+            if (Ensure-WindowFullscreen -Handle $customerWin.Handle -Screen $screens[$mIdx] -Label "Musteri Ekrani") {
+                $changed = $true
+            }
+        } elseif ($AllowReopen) {
+            $now = Get-Date
+            if (($now - $script:lastCustomerLaunchAt).TotalSeconds -ge 15) {
+                $script:lastCustomerLaunchAt = $now
+                Write-BridgeLog "Watchdog: Musteri Ekrani kapali, 2. ekranda tam ekran aciliyor..."
+                $launchedCust = Launch-PosChromeWindow -Url "$baseUrl$customerPath" -Screen $screens[$mIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Musteri Ekrani"
+                if ($launchedCust -ne [IntPtr]::Zero) {
+                    $customerHandle = $launchedCust
+                    $changed = $true
+                }
+            }
+        }
+    }
+
+    if ($changed) {
+        Start-Sleep -Milliseconds 120
+        if ($prevFg -ne [IntPtr]::Zero -and $prevFg -ne $customerHandle) {
+            [BonjBridgeWin32]::ForceFocus($prevFg)
+        } elseif ($cashierWin) {
+            [BonjBridgeWin32]::ForceFocus($cashierWin.Handle)
+        }
     }
 }
 
@@ -1018,7 +1032,7 @@ while ($listener.IsListening) {
                 if ((($now - $script:bridgeStartTime).TotalSeconds -ge 15) -and (($now - $script:lastWatchdogRun).TotalSeconds -ge 12)) {
                     $script:lastWatchdogRun = $now
                     try {
-                        Apply-ScreenPlacement -AllowReopen $true
+                        Apply-ScreenPlacement -AllowReopen $true -IncludeCashier $false
                     } catch {
                         Write-BridgeLog "Watchdog hatasi: $($_.Exception.Message)"
                     }
@@ -1145,7 +1159,7 @@ while ($listener.IsListening) {
         }
 
         if ($req.HttpMethod -eq "POST" -and $path -eq "/screens/apply") {
-            Apply-ScreenPlacement
+            Apply-ScreenPlacement -AllowReopen $true -IncludeCashier $true
             Send-JsonResponse -Ctx $ctx -StatusCode 200 -BodyObject @{ ok = $true }
             continue
         }
