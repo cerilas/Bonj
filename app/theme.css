@@ -57,8 +57,8 @@ body:has(.home-cart-float) .theme-toggle { bottom: 96px; }
   line-height: 1;
 }
 .public-header-logo {
-  width: 86px;
-  height: 86px;
+  width: 110px;
+  height: 55px;
   transform: translateY(1px);
 }
 .public-header-links { display: flex; align-items: center; gap: clamp(18px, 2.6vw, 42px); font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -130,7 +130,7 @@ html[data-theme="dark"] .public-location-map iframe {
 .public-site-footer { position: relative; z-index: 2; background: #eadfce; color: #171114; padding: 74px clamp(20px, 5vw, 78px) 26px; }
 .public-footer-top { width: min(1440px, 100%); display: grid; grid-template-columns: minmax(260px, 1.55fr) repeat(3, minmax(130px, 0.75fr)); gap: clamp(30px, 5vw, 92px); margin: 0 auto; padding-bottom: 58px; }
 .public-footer-brand > a:first-child { display: block; width: max-content; }
-.public-footer-logo { width: clamp(84px, 8vw, 112px); height: clamp(84px, 8vw, 112px); }
+.public-footer-logo { width: clamp(120px, 11vw, 152px); height: auto; }
 .public-footer-brand p { max-width: 340px; margin: 28px 0 23px; color: rgba(23, 17, 20, 0.62); font-size: 11px; line-height: 1.7; }
 .public-footer-address { max-width: 390px; display: flex; align-items: flex-start; gap: 9px; color: rgba(23, 17, 20, 0.72); font-size: 9px; font-weight: 700; line-height: 1.65; }
 .public-footer-address i { color: #a91940; font-size: 13px; font-style: normal; }
@@ -671,7 +671,7 @@ html[data-theme="dark"] .admin-api-code-head button.is-copied { color: #b6db7b; 
   }
 
   .public-site-header { height: 70px; grid-template-columns: 1fr auto; gap: 12px; padding-inline: 16px; }
-  .public-header-logo { width: 66px; height: 66px; transform: none; }
+  .public-header-logo { width: 84px; height: 42px; transform: none; }
   .public-header-links,
   .public-header-instagram { display: none; }
   .public-header-actions { gap: 8px; }
@@ -701,7 +701,7 @@ html[data-theme="dark"] .admin-api-code-head button.is-copied { color: #b6db7b; 
   .public-footer-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 38px 22px; padding-bottom: 42px; }
   .public-footer-brand { grid-column: 1 / -1; }
   .public-footer-brand p { max-width: 390px; }
-  .public-footer-logo { width: 92px; height: 92px; }
+  .public-footer-logo { width: 112px; height: auto; }
   .public-footer-column h2 { margin-top: 0; }
   .public-footer-discovery { grid-template-columns: 1fr; gap: 24px; padding: 28px 0 32px; }
   .public-footer-discovery nav { gap: 7px; }

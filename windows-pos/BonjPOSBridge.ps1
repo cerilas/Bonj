@@ -351,12 +351,24 @@ function Invoke-ThermalPrint {
         throw "Yazici secilmedi."
     }
 
+    $logoFile = Join-Path $scriptDir "bonj-logo.png"
+    $logoImg = $null
+    if (Test-Path $logoFile) {
+        try {
+            $logoImg = [System.Drawing.Image]::FromFile($logoFile)
+        } catch {
+            $logoImg = $null
+        }
+    }
+
     $widthHundredths = if ($PaperWidthMm -eq 58) { 225 } else { 310 }
-    $estimatedHeight = [Math]::Max(320, (120 + ($Lines.Count * 22)))
+    $logoExtraHeight = if ($logoImg) { 90 } else { 36 }
+    $estimatedHeight = [Math]::Max(380, ($logoExtraHeight + 130 + ($Lines.Count * 26)))
 
     $doc = New-Object System.Drawing.Printing.PrintDocument
     $doc.PrinterSettings.PrinterName = $PrinterName
     if (-not $doc.PrinterSettings.IsValid) {
+        if ($logoImg) { $logoImg.Dispose() }
         throw "Yazici Windows'ta bulunamadi veya gecersiz: $PrinterName"
     }
 
@@ -379,7 +391,14 @@ function Invoke-ThermalPrint {
         $fmtCenter.Alignment = [System.Drawing.StringAlignment]::Center
         $fmtLeft = New-Object System.Drawing.StringFormat
 
-        if ($TitleLine) {
+        if ($logoImg) {
+            $drawW = [Math]::Min($w * 0.72, 165.0)
+            $drawH = $drawW * ($logoImg.Height / [double]$logoImg.Width)
+            $drawX = $x + (($w - $drawW) / 2.0)
+            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $g.DrawImage($logoImg, [float]$drawX, [float]$y, [float]$drawW, [float]$drawH)
+            $y += ([float]$drawH + 8)
+        } elseif ($TitleLine) {
             $titleSize = $g.MeasureString($TitleLine, $fontTitle, [int]$w, $fmtCenter)
             $rect = New-Object System.Drawing.RectangleF($x, $y, $w, ($titleSize.Height + 6))
             $g.DrawString($TitleLine, $fontTitle, $brush, $rect, $fmtCenter)
@@ -405,11 +424,15 @@ function Invoke-ThermalPrint {
         $ev.HasMorePages = $false
     })
 
-    $doc.Print()
-    $fontTitle.Dispose()
-    $fontBody.Dispose()
-    $fontBold.Dispose()
-    $doc.Dispose()
+    try {
+        $doc.Print()
+    } finally {
+        if ($logoImg) { $logoImg.Dispose() }
+        $fontTitle.Dispose()
+        $fontBody.Dispose()
+        $fontBold.Dispose()
+        $doc.Dispose()
+    }
 }
 
 function Build-ReceiptLines {

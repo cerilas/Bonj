@@ -53,7 +53,7 @@
 .admin-page-loader-card { display: flex; align-items: center; gap: 17px; transform: translateY(8px); transition: transform .35s cubic-bezier(.2,.75,.2,1); }
 .admin-page-loader.is-visible .admin-page-loader-card { transform: translateY(0); }
 .admin-page-loader-mark { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: #a91940; color: #fff; box-shadow: 0 16px 36px rgba(169, 25, 64, .22); animation: admin-loader-mark 1.5s ease-in-out infinite; }
-.admin-loader-logo { width: 44px; height: 44px; }
+.admin-loader-logo { width: 46px; height: auto; }
 .admin-page-loader-card > div { width: 150px; display: grid; }
 .admin-page-loader-card strong { font-family: var(--serif); font-size: 26px; font-weight: 400; line-height: .85; letter-spacing: -.055em; }
 .admin-page-loader-card small { margin-top: 7px; color: rgba(24, 18, 21, .56); font-size: 6px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
@@ -1373,7 +1373,7 @@
     padding-inline: 0;
   }
 
-  .admin-sidebar-logo { width: 56px; height: 56px; }
+  .admin-sidebar-logo { width: 58px; height: auto; }
 
   .admin-sidebar nav span,
   .admin-account div,
@@ -2476,7 +2476,7 @@
   }
 
   .admin-order-print > header > div { display: block; }
-  .admin-print-logo { width: 25mm; height: 25mm; }
+  .admin-print-logo { width: 32mm; height: auto; filter: none !important; }
   .admin-order-print > header p { margin: 0; font-size: 2.4mm; font-weight: 800; letter-spacing: 0.12em; white-space: nowrap; }
 
   .admin-order-print-code {
@@ -3596,8 +3596,9 @@ html[data-theme="light"] .admin-pos-delete-table-btn {
 }
 
 .admin-pos-receipt-logo {
-  width: 64px;
+  width: 112px;
   height: auto;
+  filter: none !important;
 }
 
 .admin-pos-receipt-head span {
@@ -4132,7 +4133,7 @@ html[data-theme="dark"] .garson-login-card {
 }
 
 .garson-login-logo {
-  width: 96px;
+  width: 136px;
   height: auto;
 }
 
@@ -4260,7 +4261,7 @@ html[data-theme="dark"] .garson-login-card {
 }
 
 .garson-topbar-logo {
-  width: 40px;
+  width: 80px;
   height: 40px;
   object-fit: contain;
   flex: 0 0 auto;

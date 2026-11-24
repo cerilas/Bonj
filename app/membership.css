@@ -176,9 +176,13 @@ html[data-theme="dark"] .bonj-auth-close {
 }
 
 .bonj-auth-logo {
-  width: 76px;
-  height: 76px;
+  width: 124px;
+  height: auto;
   margin: 0 auto 14px;
+}
+
+html[data-theme="dark"] .bonj-auth-logo {
+  filter: brightness(0) invert(1);
 }
 
 .bonj-auth-title {

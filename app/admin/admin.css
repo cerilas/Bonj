@@ -38,7 +38,7 @@
   bottom: -22%;
   width: 76%;
   aspect-ratio: 1;
-  background: url("/bonj-logo2.svg") center / contain no-repeat;
+  background: url("/bonj-logo.png") center / contain no-repeat;
   filter: brightness(0) invert(1);
   opacity: 0.035;
 }
@@ -66,7 +66,7 @@
   transform: rotate(-6deg);
 }
 
-.admin-login-logo { width: 132px; height: 132px; }
+.admin-login-logo { width: 148px; height: auto; }
 
 .login-orbit {
   position: absolute;
@@ -106,7 +106,7 @@
   letter-spacing: 0.2em;
 }
 
-.admin-eyebrow-logo { width: 27px; height: 27px; }
+.admin-eyebrow-logo { width: 48px; height: auto; }
 .admin-eyebrow b { font: inherit; }
 
 .admin-login-form h1,
@@ -450,7 +450,7 @@
 }
 
 .admin-brand { display: block; width: max-content; }
-.admin-sidebar-logo { width: 66px; height: 66px; }
+.admin-sidebar-logo { width: 112px; height: auto; }
 
 .admin-sidebar nav { display: grid; gap: 4px; margin-top: 90px; }
 .admin-sidebar nav a,

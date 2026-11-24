@@ -46,8 +46,13 @@ html[data-theme="dark"] .cd-screen {
 }
 
 .cd-logo {
-  width: 44px;
-  height: 44px;
+  width: 84px;
+  height: auto;
+}
+
+html[data-theme="light"] .cd-logo,
+html[data-theme="light"] .cd-idle-logo {
+  filter: none;
 }
 
 html[data-theme="dark"] .cd-logo,
@@ -214,8 +219,8 @@ html[data-theme="dark"] .cd-idle-card {
 }
 
 .cd-idle-logo {
-  width: 84px;
-  height: 84px;
+  width: 156px;
+  height: auto;
 }
 
 .cd-idle-card h1 {

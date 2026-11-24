@@ -16,8 +16,8 @@ export function BrandLogo({
       className={`bonj-brand-logo ${className}`.trim()}
       src="/bonj-logo.png"
       alt={alt}
-      width={1024}
-      height={1024}
+      width={900}
+      height={450}
       priority={priority}
       unoptimized
     />
