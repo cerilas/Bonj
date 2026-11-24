@@ -191,6 +191,15 @@ export function AdminTablesPanel({
         setBridgeConnected(Boolean(local));
       })
       .catch(() => {});
+    const onHwUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<PosHardwareSettingsDTO | undefined>).detail;
+      if (detail) setHwSettings(detail);
+      void fetchLocalBridgeHardware().then((local) => setBridgeConnected(Boolean(local))).catch(() => {});
+    };
+    window.addEventListener("bonj-hardware-updated", onHwUpdated);
+    return () => {
+      window.removeEventListener("bonj-hardware-updated", onHwUpdated);
+    };
   }, [loadSnapshot]);
 
   // Live 1-second timer for open table durations

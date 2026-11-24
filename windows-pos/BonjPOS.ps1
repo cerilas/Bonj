@@ -289,6 +289,7 @@ function Launch-And-Place-Window {
         "--new-window",
         "--window-position=$bx,$by",
         "--window-size=$bw,$bh",
+        "--autoplay-policy=no-user-gesture-required",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-session-crashed-bubble"

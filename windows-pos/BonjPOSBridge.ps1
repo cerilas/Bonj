@@ -377,23 +377,29 @@ function Invoke-ThermalPrint {
         $brush = [System.Drawing.Brushes]::Black
         $fmtCenter = New-Object System.Drawing.StringFormat
         $fmtCenter.Alignment = [System.Drawing.StringAlignment]::Center
+        $fmtLeft = New-Object System.Drawing.StringFormat
 
         if ($TitleLine) {
-            $rect = New-Object System.Drawing.RectangleF($x, $y, $w, 26)
+            $titleSize = $g.MeasureString($TitleLine, $fontTitle, [int]$w, $fmtCenter)
+            $rect = New-Object System.Drawing.RectangleF($x, $y, $w, ($titleSize.Height + 6))
             $g.DrawString($TitleLine, $fontTitle, $brush, $rect, $fmtCenter)
-            $y += 26
+            $y += ($titleSize.Height + 8)
         }
 
         foreach ($line in $Lines) {
             if ($line -like "BOLD:*") {
                 $txt = $line.Substring(5)
-                $rect = New-Object System.Drawing.RectangleF($x, $y, $w, 22)
-                $g.DrawString($txt, $fontBold, $brush, $rect)
-                $y += 18
+                $sz = $g.MeasureString($txt, $fontBold, [int]$w, $fmtLeft)
+                $h = [Math]::Max(18, $sz.Height + 3)
+                $rect = New-Object System.Drawing.RectangleF($x, $y, $w, $h)
+                $g.DrawString($txt, $fontBold, $brush, $rect, $fmtLeft)
+                $y += ($h + 2)
             } else {
-                $rect = New-Object System.Drawing.RectangleF($x, $y, $w, 20)
-                $g.DrawString($line, $fontBody, $brush, $rect)
-                $y += 16
+                $sz = $g.MeasureString($line, $fontBody, [int]$w, $fmtLeft)
+                $h = [Math]::Max(15, $sz.Height + 2)
+                $rect = New-Object System.Drawing.RectangleF($x, $y, $w, $h)
+                $g.DrawString($line, $fontBody, $brush, $rect, $fmtLeft)
+                $y += ($h + 2)
             }
         }
         $ev.HasMorePages = $false
@@ -564,7 +570,7 @@ while ($listener.IsListening) {
 
         $bodyObj = $null
         if ($req.HasEntityBody) {
-            $reader = New-Object System.IO.StreamReader($req.InputStream, $req.ContentEncoding)
+            $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
             $rawBody = $reader.ReadToEnd()
             $reader.Close()
             if ($rawBody) {

@@ -1,10 +1,17 @@
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { cafeTables, orders, tableActivityLogs } from "@/db/schema";
+import { cafeTables, orderItems, orders, tableActivityLogs, tableSessions } from "@/db/schema";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
+
+export type LiveOrderItem = {
+  productName: string;
+  quantity: number;
+  unitPriceInKurus: number;
+  lineTotalInKurus: number;
+};
 
 export type AdminLiveEvent =
   | {
@@ -15,20 +22,42 @@ export type AdminLiveEvent =
       customerName: string;
       fulfillmentType: "delivery" | "pickup" | "table" | string;
       tableNumber: string | null;
+      note: string | null;
+      pickupAt: string | null;
       totalInKurus: number;
       createdAt: string;
+      items: LiveOrderItem[];
     }
   | {
       kind: "staff_table";
       id: number;
       tableId: number;
       tableName: string;
+      tableZone: string;
       actorName: string;
       actorRole: string;
       action: string;
       summary: string;
+      note: string | null;
       createdAt: string;
+      items: LiveOrderItem[];
     };
+
+function parseStaffAddedItem(summary: string): LiveOrderItem[] {
+  const match = summary.match(/(\d+)\s*[×x]\s+(.+?)\s+ekledi\.?$/i);
+  if (!match) return [];
+  const quantity = Math.max(1, Number(match[1]) || 1);
+  const productName = match[2].trim();
+  if (!productName) return [];
+  return [
+    {
+      productName,
+      quantity,
+      unitPriceInKurus: 0,
+      lineTotalInKurus: 0,
+    },
+  ];
+}
 
 export async function GET(request: Request) {
   if (!(await getCurrentAdmin())) {
@@ -37,9 +66,11 @@ export async function GET(request: Request) {
 
   const sinceParam = new URL(request.url).searchParams.get("since");
   const parsedSince = sinceParam ? new Date(sinceParam) : new Date(Date.now() - 10_000);
-  const since = Number.isNaN(parsedSince.getTime())
+  const baseSince = Number.isNaN(parsedSince.getTime())
     ? new Date(Date.now() - 10_000)
     : parsedSince;
+  // 5-second overlap prevents missing orders across concurrent DB transactions or clock skew
+  const since = new Date(baseSince.getTime() - 5000);
 
   const db = getDb();
 
@@ -50,6 +81,8 @@ export async function GET(request: Request) {
       customerName: orders.customerName,
       fulfillmentType: orders.fulfillmentType,
       tableNumber: orders.tableNumber,
+      note: orders.note,
+      pickupAt: orders.pickupAt,
       totalInKurus: orders.totalInKurus,
       createdAt: orders.createdAt,
     })
@@ -58,11 +91,40 @@ export async function GET(request: Request) {
     .orderBy(asc(orders.updatedAt))
     .limit(20);
 
+  const newOrderIds = newOrders.map((o) => o.id);
+  const newOrderItemRows = newOrderIds.length
+    ? await db
+        .select({
+          orderId: orderItems.orderId,
+          productName: orderItems.productName,
+          quantity: orderItems.quantity,
+          unitPriceInKurus: orderItems.unitPriceInKurus,
+          lineTotalInKurus: orderItems.lineTotalInKurus,
+        })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, newOrderIds))
+        .orderBy(asc(orderItems.id))
+    : [];
+
+  const itemsByOrderId = new Map<number, LiveOrderItem[]>();
+  for (const item of newOrderItemRows) {
+    const list = itemsByOrderId.get(item.orderId) ?? [];
+    list.push({
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPriceInKurus: item.unitPriceInKurus,
+      lineTotalInKurus: item.lineTotalInKurus,
+    });
+    itemsByOrderId.set(item.orderId, list);
+  }
+
   const staffTableLogs = await db
     .select({
       id: tableActivityLogs.id,
       tableId: tableActivityLogs.tableId,
       tableName: cafeTables.name,
+      tableZone: cafeTables.zone,
+      sessionNote: tableSessions.note,
       actorName: tableActivityLogs.actorName,
       actorRole: tableActivityLogs.actorRole,
       action: tableActivityLogs.action,
@@ -71,6 +133,7 @@ export async function GET(request: Request) {
     })
     .from(tableActivityLogs)
     .innerJoin(cafeTables, eq(tableActivityLogs.tableId, cafeTables.id))
+    .leftJoin(tableSessions, eq(tableActivityLogs.sessionId, tableSessions.id))
     .where(
       and(
         gt(tableActivityLogs.createdAt, since),
@@ -79,7 +142,7 @@ export async function GET(request: Request) {
       ),
     )
     .orderBy(asc(tableActivityLogs.createdAt))
-    .limit(20);
+    .limit(25);
 
   const events: AdminLiveEvent[] = [
     ...newOrders.map((o) => ({
@@ -90,19 +153,25 @@ export async function GET(request: Request) {
       customerName: o.customerName,
       fulfillmentType: o.fulfillmentType,
       tableNumber: o.tableNumber,
+      note: o.note ?? null,
+      pickupAt: o.pickupAt ? o.pickupAt.toISOString() : null,
       totalInKurus: o.totalInKurus,
       createdAt: o.createdAt.toISOString(),
+      items: itemsByOrderId.get(o.id) ?? [],
     })),
     ...staffTableLogs.map((l) => ({
       kind: "staff_table" as const,
       id: l.id,
       tableId: l.tableId,
       tableName: l.tableName,
+      tableZone: l.tableZone,
       actorName: l.actorName,
       actorRole: l.actorRole,
       action: l.action,
       summary: l.summary,
+      note: l.sessionNote ?? null,
       createdAt: l.createdAt.toISOString(),
+      items: l.action === "add_item" ? parseStaffAddedItem(l.summary) : [],
     })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 

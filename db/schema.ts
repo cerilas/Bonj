@@ -631,7 +631,7 @@ export const posHardwareSettings = pgTable(
     kitchenPrinterName: varchar("kitchen_printer_name", { length: 160 }),
     paperWidthMm: integer("paper_width_mm").notNull().default(80),
     autoPrintCashierOnClose: boolean("auto_print_cashier_on_close").notNull().default(true),
-    autoPrintKitchenOnOrder: boolean("auto_print_kitchen_on_order").notNull().default(false),
+    autoPrintKitchenOnOrder: boolean("auto_print_kitchen_on_order").notNull().default(true),
     lastAgentSyncAt: timestamp("last_agent_sync_at", { withTimezone: true }),
     lastKnownMonitorsJson: text("last_known_monitors_json"),
     lastKnownPrintersJson: text("last_known_printers_json"),

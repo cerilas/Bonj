@@ -53,7 +53,7 @@ async function ensurePosHardwareTable() {
       kitchen_printer_name varchar(160),
       paper_width_mm integer not null default 80,
       auto_print_cashier_on_close boolean not null default true,
-      auto_print_kitchen_on_order boolean not null default false,
+      auto_print_kitchen_on_order boolean not null default true,
       last_agent_sync_at timestamptz,
       last_known_monitors_json text,
       last_known_printers_json text,

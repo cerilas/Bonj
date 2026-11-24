@@ -19,7 +19,7 @@ import { AdminApiDocsPanel } from "./AdminApiDocsPanel";
 import { AdminTablesPanel, posPaymentLabel, type PosPrintReceiptData } from "./AdminTablesPanel";
 import { AdminStaffPanel } from "./AdminStaffPanel";
 import type { AdminLiveEvent } from "../api/admin/live-events/route";
-import { playCashierAlertSound, unlockCashierAudio } from "@/lib/admin-sound";
+import { getCashierAudioState, playCashierAlertSound, unlockCashierAudio } from "@/lib/admin-sound";
 import { BrandLogo } from "../components/BrandLogo";
 import { UiIcon } from "../components/UiIcon";
 
@@ -518,8 +518,16 @@ export function AdminDashboard({
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [liveToasts, setLiveToasts] = useState<LiveToastItem[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioLocked, setAudioLocked] = useState(false);
+  const [hwSettings, setHwSettings] = useState<PosHardwareSettingsDTO>(initialHardwareSettings);
   const lastLivePollRef = useRef<string>(new Date().toISOString());
   const seenEventKeysRef = useRef<Set<string>>(new Set());
+  const pendingSoundVariantRef = useRef<"order" | "table" | null>(null);
+  const kitchenPrintQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const soundEnabledRef = useRef(soundEnabled);
+  const activeViewRef = useRef(activeView);
+  const hwSettingsRef = useRef(hwSettings);
+  const loadOrdersRef = useRef<() => Promise<void>>(async () => {});
   const [categoryEditorOpen, setCategoryEditorOpen] = useState(false);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(
     emptyCategoryForm(initialCategories.length + 1),
@@ -705,20 +713,170 @@ export function AdminDashboard({
   }, [pendingOrderId, activeView, orderData.orders]);
 
   useEffect(() => {
-    const unlock = () => {
-      void unlockCashierAudio();
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    activeViewRef.current = activeView;
+  }, [activeView]);
+
+  useEffect(() => {
+    hwSettingsRef.current = hwSettings;
+  }, [hwSettings]);
+
+  useEffect(() => {
+    loadOrdersRef.current = loadOrders;
+  }, [loadOrders]);
+
+  useEffect(() => {
+    const syncAudioState = () => {
+      setAudioLocked(getCashierAudioState() === "suspended");
     };
+    const unlock = async () => {
+      const ok = await unlockCashierAudio();
+      setAudioLocked(!ok && getCashierAudioState() === "suspended");
+      if (ok && pendingSoundVariantRef.current && soundEnabledRef.current) {
+        const pending = pendingSoundVariantRef.current;
+        pendingSoundVariantRef.current = null;
+        void playCashierAlertSound(pending);
+      }
+    };
+    const rafId = window.requestAnimationFrame(syncAudioState);
     window.addEventListener("pointerdown", unlock, { passive: true });
     window.addEventListener("keydown", unlock, { passive: true });
     return () => {
+      window.cancelAnimationFrame(rafId);
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
   }, []);
 
   useEffect(() => {
+    const onHwUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<PosHardwareSettingsDTO | undefined>).detail;
+      if (detail) {
+        setHwSettings(detail);
+        hwSettingsRef.current = detail;
+      }
+    };
+    window.addEventListener("bonj-hardware-updated", onHwUpdated);
+
+    const refreshHw = () => {
+      fetch("/api/admin/hardware", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<{ settings?: PosHardwareSettingsDTO }>) : null))
+        .then((d) => {
+          if (d?.settings) {
+            setHwSettings(d.settings);
+            hwSettingsRef.current = d.settings;
+          }
+        })
+        .catch(() => {});
+    };
+    const hwTimer = window.setInterval(refreshHw, 30000);
+
+    return () => {
+      window.removeEventListener("bonj-hardware-updated", onHwUpdated);
+      window.clearInterval(hwTimer);
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
+    let inFlight = false;
+    const PRINTED_STORAGE_KEY = "bonj_printed_kitchen_keys_v1";
+
+    const readPrintedKeys = (): string[] => {
+      try {
+        const raw = window.localStorage.getItem(PRINTED_STORAGE_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const markKeyPrinted = (key: string) => {
+      try {
+        const list = readPrintedKeys();
+        if (!list.includes(key)) {
+          list.push(key);
+          window.localStorage.setItem(PRINTED_STORAGE_KEY, JSON.stringify(list.slice(-300)));
+        }
+      } catch {}
+    };
+
+    const printedSet = new Set<string>(readPrintedKeys());
+
+    const enqueueKitchenAutoPrint = (ev: AdminLiveEvent, key: string) => {
+      const hw = hwSettingsRef.current;
+      if (!hw.autoPrintKitchenOnOrder || !hw.kitchenPrinterName) return;
+      if (printedSet.has(key)) return;
+      if (ev.items.length === 0) return;
+
+      printedSet.add(key);
+      markKeyPrinted(key);
+
+      const isOrder = ev.kind === "order";
+      const tableZone = isOrder
+        ? ev.fulfillmentType === "delivery"
+          ? "EVE PAKET"
+          : ev.fulfillmentType === "table"
+            ? "MASAYA QR"
+            : "GEL AL"
+        : ev.tableZone;
+      const tableName = isOrder
+        ? ev.tableNumber
+          ? `Masa ${ev.tableNumber} (#${ev.orderNumber})`
+          : `#${ev.orderNumber}`
+        : ev.tableName;
+
+      kitchenPrintQueueRef.current = kitchenPrintQueueRef.current.then(async () => {
+        if (!active) return;
+        const payload = {
+          target: "kitchen" as const,
+          printerName: hw.kitchenPrinterName,
+          paperWidthMm: hw.paperWidthMm,
+          tableZone,
+          tableName,
+          openedAt: ev.createdAt,
+          closedAt: null,
+          guestCount: 1,
+          customerName: isOrder ? ev.customerName : ev.actorName,
+          note: ev.note,
+          paymentMethod: null,
+          subtotalInKurus: isOrder ? ev.totalInKurus : 0,
+          discountInKurus: 0,
+          totalInKurus: isOrder ? ev.totalInKurus : 0,
+          items: ev.items,
+        };
+
+        let result = await sendLocalBridgeReceiptPrint(payload);
+        if (!result.ok) {
+          await new Promise((r) => window.setTimeout(r, 1200));
+          result = await sendLocalBridgeReceiptPrint(payload);
+        }
+        if (!result.ok && active) {
+          setLiveToasts((prev) =>
+            [
+              {
+                key: `print-err-${key}-${Date.now()}`,
+                badge: "YAZICI UYARISI",
+                tone: "delivery" as const,
+                title: `${tableName} mutfak fişi basılamadı`,
+                subtitle: result.error || `Mutfak yazıcısı (${hw.kitchenPrinterName}) bağlantısını kontrol edin.`,
+                createdAt: new Date().toISOString(),
+                event: ev,
+              },
+              ...prev,
+            ].slice(0, 6),
+          );
+        }
+      });
+    };
+
     const poll = async () => {
+      if (inFlight || !active) return;
+      inFlight = true;
       try {
         const res = await fetch(
           `/api/admin/live-events?since=${encodeURIComponent(lastLivePollRef.current)}`,
@@ -752,6 +910,7 @@ export function AdminDashboard({
               createdAt: ev.createdAt,
               event: ev,
             });
+            enqueueKitchenAutoPrint(ev, key);
           } else {
             fresh.push({
               key,
@@ -762,30 +921,51 @@ export function AdminDashboard({
               createdAt: ev.createdAt,
               event: ev,
             });
+            if (ev.action === "add_item") {
+              enqueueKitchenAutoPrint(ev, key);
+            }
           }
         }
 
         if (fresh.length > 0 && active) {
-          if (soundEnabled) {
+          if (soundEnabledRef.current) {
             const hasOrder = fresh.some((t) => t.event.kind === "order");
-            void playCashierAlertSound(hasOrder ? "order" : "table");
+            const variant = hasOrder ? "order" : "table";
+            const played = await playCashierAlertSound(variant);
+            if (!played) {
+              pendingSoundVariantRef.current = variant;
+              setAudioLocked(true);
+            }
           }
           setLiveToasts((prev) => [...fresh.reverse(), ...prev].slice(0, 6));
-          if (fresh.some((t) => t.event.kind === "order") && activeView === "orders") {
-            void loadOrders();
+          if (fresh.some((t) => t.event.kind === "order") && activeViewRef.current === "orders") {
+            void loadOrdersRef.current();
           }
         }
       } catch {
         // Ignore transient poll errors
+      } finally {
+        inFlight = false;
       }
     };
 
-    const timer = window.setInterval(() => void poll(), 4000);
+    const onWake = () => {
+      if (document.visibilityState === "visible") {
+        void poll();
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => void poll(), 3000);
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
     return () => {
       active = false;
       window.clearInterval(timer);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
     };
-  }, [soundEnabled, activeView, loadOrders]);
+  }, []);
 
   function handleOpenLiveToast(toast: LiveToastItem) {
     setLiveToasts((prev) => prev.filter((item) => item.key !== toast.key));
@@ -1290,10 +1470,14 @@ export function AdminDashboard({
           <button
             type="button"
             className="admin-sound-test"
-            onClick={() => void playCashierAlertSound("order")}
-            title="Bildirim sesini test et"
+            onClick={async () => {
+              const ok = await unlockCashierAudio();
+              setAudioLocked(!ok && getCashierAudioState() === "suspended");
+              void playCashierAlertSound("order");
+            }}
+            title={audioLocked ? "Ses kilidini açmak ve test etmek için dokunun" : "Bildirim sesini test et"}
           >
-            Test
+            {audioLocked ? "Sesi Aç" : "Test"}
           </button>
         </div>
         <div className="admin-account">

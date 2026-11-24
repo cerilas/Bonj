@@ -190,6 +190,7 @@ export function AdminHardwarePanel({
         throw new Error(data.error || "Ayarlar kaydedilemedi.");
       }
       setSettings(data.settings);
+      window.dispatchEvent(new CustomEvent("bonj-hardware-updated", { detail: data.settings }));
 
       const syncedLocal = await saveLocalBridgeConfig({
         cashierScreenIndex,
