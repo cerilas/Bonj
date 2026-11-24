@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { cafeTables, tableKitchenTickets, tableSessionItems, tableSessions } from "@/db/schema";
+import { cafeTables, menuItems, tableKitchenTickets, tableSessionItems, tableSessions } from "@/db/schema";
 import { ensureKitchenSchemaReady, type AdminKitchenTicketItem } from "@/lib/admin-tables";
 import { getTableOperator, logTableActivity, staffRoleLabel } from "@/lib/staff-auth";
 
@@ -69,8 +69,16 @@ export async function POST(
     }
 
     const sessionItems = await tx
-      .select()
+      .select({
+        id: tableSessionItems.id,
+        productName: tableSessionItems.productName,
+        quantity: tableSessionItems.quantity,
+        kitchenSentQuantity: tableSessionItems.kitchenSentQuantity,
+        note: tableSessionItems.note,
+        prepStation: menuItems.prepStation,
+      })
       .from(tableSessionItems)
+      .leftJoin(menuItems, eq(tableSessionItems.menuItemId, menuItems.id))
       .where(
         filterItemIds && filterItemIds.length > 0
           ? and(
@@ -82,7 +90,9 @@ export async function POST(
       .orderBy(asc(tableSessionItems.createdAt), asc(tableSessionItems.id));
 
     const unsentRows = sessionItems.filter(
-      (row) => row.quantity > Math.max(0, row.kitchenSentQuantity ?? 0),
+      (row) =>
+        (row.prepStation ?? "kitchen") !== "counter" &&
+        row.quantity > Math.max(0, row.kitchenSentQuantity ?? 0),
     );
 
     const deltaItems: AdminKitchenTicketItem[] = unsentRows.map((row) => ({

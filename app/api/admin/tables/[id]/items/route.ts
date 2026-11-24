@@ -47,6 +47,7 @@ export async function POST(
   let resolvedName = String(body.productName ?? "").trim().slice(0, 120);
   let resolvedPrice = Math.max(0, Math.round(Number(body.unitPriceInKurus ?? 0) || 0));
   let resolvedMenuItemId: number | null = null;
+  let resolvedPrepStation: "kitchen" | "counter" = "kitchen";
 
   if (body.menuItemId) {
     const [menuItem] = await db
@@ -54,6 +55,7 @@ export async function POST(
         id: menuItems.id,
         name: menuItems.name,
         priceInKurus: menuItems.priceInKurus,
+        prepStation: menuItems.prepStation,
       })
       .from(menuItems)
       .where(eq(menuItems.id, Number(body.menuItemId)))
@@ -65,6 +67,7 @@ export async function POST(
     resolvedMenuItemId = menuItem.id;
     resolvedName = menuItem.name;
     resolvedPrice = menuItem.priceInKurus ?? 0;
+    resolvedPrepStation = menuItem.prepStation === "counter" ? "counter" : "kitchen";
   } else if (!resolvedName) {
     return NextResponse.json({ error: "Ürün adı veya menü ürünü zorunludur." }, { status: 400 });
   }
@@ -122,7 +125,12 @@ export async function POST(
         summary: `${staffRoleLabel(operator.actorRole)} ${operator.actorName} ${quantity}× ${resolvedName} ekledi.`,
       });
 
-      return NextResponse.json({ ok: true, item: updated, sessionId: session.id });
+      return NextResponse.json({
+        ok: true,
+        item: updated,
+        prepStation: resolvedPrepStation,
+        sessionId: session.id,
+      });
     }
   }
 
@@ -148,5 +156,8 @@ export async function POST(
     summary: `${staffRoleLabel(operator.actorRole)} ${operator.actorName} ${quantity}× ${resolvedName} ekledi.${noteTag}`,
   });
 
-  return NextResponse.json({ ok: true, item: inserted, sessionId: session.id }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, item: inserted, prepStation: resolvedPrepStation, sessionId: session.id },
+    { status: 201 },
+  );
 }

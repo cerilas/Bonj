@@ -1,6 +1,8 @@
 import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { categories, categoryImages, menuItems, productImages } from "@/db/schema";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
+import type { MenuPrepStation } from "@/lib/menu";
 
 export type AdminProduct = {
   id: number;
@@ -16,6 +18,7 @@ export type AdminProduct = {
   priceInKurus: number | null;
   badge: string;
   accent: string;
+  prepStation: MenuPrepStation;
   sortOrder: number;
   isFeatured: boolean;
   isActive: boolean;
@@ -62,6 +65,7 @@ export async function getAdminProducts({
   query?: string;
   status?: "all" | "active" | "passive";
 } = {}): Promise<AdminProductPage> {
+  await ensureKitchenSchemaReady();
   const db = getDb();
   const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
   const normalizedQuery = query.trim().slice(0, 120);
@@ -110,6 +114,7 @@ export async function getAdminProducts({
       priceInKurus: menuItems.priceInKurus,
       badge: menuItems.badge,
       accent: menuItems.accent,
+      prepStation: menuItems.prepStation,
       sortOrder: menuItems.sortOrder,
       isFeatured: menuItems.isFeatured,
       isActive: menuItems.isActive,
@@ -139,6 +144,7 @@ export async function getAdminProducts({
     priceInKurus: row.priceInKurus,
     badge: row.badge ?? "",
     accent: row.accent,
+    prepStation: (row.prepStation === "counter" ? "counter" : "kitchen") as MenuPrepStation,
     sortOrder: row.sortOrder,
     isFeatured: row.isFeatured,
     isActive: row.isActive,

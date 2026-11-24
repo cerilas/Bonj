@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { menuItems } from "@/db/schema";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { getAdminProducts } from "@/lib/admin-data";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
 
 function slugify(value: string) {
   return value
@@ -61,6 +62,7 @@ function normalizeProduct(body: Record<string, unknown>) {
     )
       ? String(body.accent)
       : "cream",
+    prepStation: body.prepStation === "counter" ? "counter" : "kitchen",
     isFeatured: Boolean(body.isFeatured),
     isActive: body.isActive !== false,
   };
@@ -97,6 +99,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const values = normalizeProduct(body);
+    await ensureKitchenSchemaReady();
     const db = getDb();
     const [position] = await db
       .select({ value: max(menuItems.sortOrder) })

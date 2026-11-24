@@ -10,6 +10,7 @@ import {
   type MenuCategory,
   type MenuItem,
 } from "@/lib/menu";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
 
 const allowedCategories = new Set<MenuCategory>([
   "signature",
@@ -28,6 +29,7 @@ function categoryFromDatabase(value: string): MenuCategory {
 }
 
 export async function getPublicMenuItems(): Promise<MenuItem[]> {
+  await ensureKitchenSchemaReady();
   const db = getDb();
   const rows = await db
     .select({
@@ -43,6 +45,7 @@ export async function getPublicMenuItems(): Promise<MenuItem[]> {
       categoryName: categories.name,
       badge: menuItemsTable.badge,
       accent: menuItemsTable.accent,
+      prepStation: menuItemsTable.prepStation,
       priceInKurus: menuItemsTable.priceInKurus,
       imageId: productImages.id,
       imageUpdatedAt: productImages.updatedAt,
@@ -79,6 +82,7 @@ export async function getPublicMenuItems(): Promise<MenuItem[]> {
     )
       ? row.accent
       : "cream") as MenuItem["accent"],
+    prepStation: row.prepStation === "counter" ? "counter" : "kitchen",
   }));
 }
 

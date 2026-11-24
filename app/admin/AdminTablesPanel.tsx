@@ -7,6 +7,7 @@ import type {
   AdminTableKitchenTicket,
   AdminTablesSnapshot,
 } from "@/lib/admin-tables";
+import type { MenuPrepStation } from "@/lib/menu";
 import { publishCustomerDisplayState } from "@/lib/customer-display";
 import type { PosHardwareSettingsDTO } from "@/lib/pos-hardware";
 import {
@@ -35,6 +36,7 @@ type CatalogItem = {
   priceInKurus?: number | null;
   category: string;
   categoryName: string;
+  prepStation?: MenuPrepStation;
 };
 
 export type PosPrintReceiptData = {
@@ -619,12 +621,18 @@ export function AdminTablesPanel({
           note: noteToAttach || undefined,
         }),
       });
-      const data = (await res.json()) as { error?: string; item?: { id: number } };
+      const data = (await res.json()) as {
+        error?: string;
+        item?: { id: number };
+        prepStation?: MenuPrepStation;
+      };
       if (!res.ok) throw new Error(data.error || "Ürün eklenemedi.");
       setAddQty("1");
       setItemNoteDraft("");
+      const resolvedStation = data.prepStation ?? item.prepStation ?? "kitchen";
       if (
         !staffMode &&
+        resolvedStation === "kitchen" &&
         hwSettings?.autoPrintKitchenOnOrder &&
         bridgeConnected &&
         hwSettings.kitchenPrinterName &&
@@ -871,7 +879,10 @@ export function AdminTablesPanel({
   const kitchenTickets = activeSession?.kitchenTickets ?? [];
   const pendingKitchenCount = activeSession
     ? activeSession.items.reduce(
-        (sum, item) => sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
+        (sum, item) =>
+          item.prepStation === "counter"
+            ? sum
+            : sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
         0,
       )
     : 0;
@@ -1155,7 +1166,9 @@ export function AdminTablesPanel({
                 const cardPendingKitchen = table.activeSession
                   ? table.activeSession.items.reduce(
                       (sum, item) =>
-                        sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
+                        item.prepStation === "counter"
+                          ? sum
+                          : sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
                       0,
                     )
                   : 0;
@@ -1627,7 +1640,10 @@ export function AdminTablesPanel({
                     disabled={busy || !item.id}
                     onClick={() => void handleAddMenuItem(item)}
                   >
-                    <small>{item.categoryName}</small>
+                    <small>
+                      {item.categoryName}
+                      {item.prepStation === "counter" ? " · Tezgah" : ""}
+                    </small>
                     <span>{item.name}</span>
                     <strong>{item.priceInKurus ? money(item.priceInKurus) : "—"}</strong>
                   </button>
@@ -1730,17 +1746,20 @@ export function AdminTablesPanel({
                       </p>
                     ) : (
                       activeSession.items.map((item) => {
+                        const isCounter = item.prepStation === "counter";
                         const sentQty = Math.min(
                           item.quantity,
                           Math.max(0, item.kitchenSentQuantity ?? 0),
                         );
                         const waitingQty = Math.max(0, item.quantity - sentQty);
-                        const allSent = waitingQty === 0 && sentQty > 0;
-                        const statusLabel = allSent
-                          ? "✓ Mutfakta"
-                          : sentQty > 0
-                            ? `${sentQty} mutfakta · ${waitingQty} yeni`
-                            : "Bekliyor";
+                        const allSent = !isCounter && waitingQty === 0 && sentQty > 0;
+                        const statusLabel = isCounter
+                          ? "Tezgah"
+                          : allSent
+                            ? "✓ Mutfakta"
+                            : sentQty > 0
+                              ? `${sentQty} mutfakta · ${waitingQty} yeni`
+                              : "Bekliyor";
 
                         return (
                           <div key={item.id} className="admin-pos-bill-item">
@@ -1750,7 +1769,11 @@ export function AdminTablesPanel({
                               <div className="admin-pos-bill-item-meta">
                                 <span
                                   className={`admin-pos-item-kitchen-badge ${
-                                    allSent ? "is-sent" : "is-pending"
+                                    isCounter
+                                      ? "is-counter"
+                                      : allSent
+                                        ? "is-sent"
+                                        : "is-pending"
                                   }`}
                                 >
                                   {statusLabel}

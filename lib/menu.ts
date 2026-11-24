@@ -7,6 +7,8 @@ export type MenuCategory =
   | "soguk-kahve"
   | "ferah";
 
+export type MenuPrepStation = "kitchen" | "counter";
+
 export type MenuItem = {
   id?: number;
   slug: string;
@@ -22,6 +24,7 @@ export type MenuItem = {
   categoryName: string;
   badge?: string;
   accent: "berry" | "cream" | "coffee" | "citrus" | "avocado";
+  prepStation?: MenuPrepStation;
 };
 
 export const categoryLabels: Array<{

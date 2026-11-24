@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AdminCategory, AdminProduct, AdminProductPage } from "@/lib/admin-data";
+import type { MenuPrepStation } from "@/lib/menu";
 import type { AdminContactMessage, AdminMessagePage } from "@/lib/admin-messages";
 import type { AdminOrder, AdminOrderPage } from "@/lib/admin-orders";
 import type { AdminCateringPage, AdminCateringRequest } from "@/lib/admin-catering";
@@ -41,6 +42,7 @@ type ProductForm = {
   price: string;
   badge: string;
   accent: string;
+  prepStation: MenuPrepStation;
   isFeatured: boolean;
   isActive: boolean;
   imageUrl: string | null;
@@ -386,6 +388,7 @@ function emptyForm(categoryId?: number): ProductForm {
     price: "",
     badge: "",
     accent: "cream",
+    prepStation: "kitchen",
     isFeatured: false,
     isActive: true,
     imageUrl: null,
@@ -405,6 +408,7 @@ function formFromProduct(product: AdminProduct): ProductForm {
     price: product.priceInKurus == null ? "" : (product.priceInKurus / 100).toString(),
     badge: product.badge,
     accent: product.accent,
+    prepStation: product.prepStation ?? "kitchen",
     isFeatured: product.isFeatured,
     isActive: product.isActive,
     imageUrl: product.imageUrl,
@@ -425,6 +429,7 @@ function payloadFromForm(form: ProductForm) {
     priceInKurus: numericPrice == null ? null : Math.round(numericPrice * 100),
     badge: form.badge,
     accent: form.accent,
+    prepStation: form.prepStation,
     isFeatured: form.isFeatured,
     isActive: form.isActive,
   };
@@ -833,7 +838,9 @@ export function AdminDashboard({
       kitchenPrintQueueRef.current = kitchenPrintQueueRef.current.then(async () => {
         if (!active) return;
 
-        let itemsToPrint = ev.items;
+        let itemsToPrint = isOrder
+          ? ev.items.filter((it) => it.prepStation !== "counter")
+          : ev.items;
         let printTableName = tableName;
         let printNote = ev.note;
         let printOpenedAt = ev.createdAt;
@@ -1620,7 +1627,16 @@ export function AdminDashboard({
                 </div>
                 <div><strong>{product.name}</strong><small>{product.shortDescription}</small></div>
               </div>
-              <span className="admin-category-chip">{product.categoryName}</span>
+              <span className="admin-category-chip">
+                {product.categoryName}
+                <span
+                  className={`admin-station-chip ${
+                    product.prepStation === "counter" ? "is-counter" : "is-kitchen"
+                  }`}
+                >
+                  {product.prepStation === "counter" ? "Tezgah" : "Mutfak"}
+                </span>
+              </span>
               <strong className="admin-row-price">{money(product.priceInKurus)}</strong>
               <button
                 className={`admin-toggle ${product.isActive ? "is-on" : ""}`}
@@ -2448,6 +2464,31 @@ export function AdminDashboard({
                   <label>Fiyat (₺)<input inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="245" /></label>
                   <label>Tahmini kalori<input type="number" min="0" max="10000" value={form.estimatedCalories} onChange={(e) => setForm({ ...form, estimatedCalories: e.target.value })} placeholder="≈ kcal" /></label>
                   <label>Etiket<input maxLength={40} value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder="Yeni" /></label>
+                </div>
+                <div className="admin-station-picker" role="group" aria-label="Hazırlama Alanı">
+                  <span>Hazırlama Alanı *</span>
+                  <div className="admin-station-grid">
+                    <button
+                      type="button"
+                      className={`admin-station-option is-kitchen ${
+                        form.prepStation !== "counter" ? "is-selected" : ""
+                      }`}
+                      onClick={() => setForm({ ...form, prepStation: "kitchen" })}
+                    >
+                      <strong>Mutfak Ürünü</strong>
+                      <small>Siparişte mutfak yazıcısından otomatik fiş çıkar.</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-station-option is-counter ${
+                        form.prepStation === "counter" ? "is-selected" : ""
+                      }`}
+                      onClick={() => setForm({ ...form, prepStation: "counter" })}
+                    >
+                      <strong>Tezgah Ürünü</strong>
+                      <small>Kasa / bar hazırlar; mutfağa otomatik fiş gitmez.</small>
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-product-settings">
                   <AccentPicker

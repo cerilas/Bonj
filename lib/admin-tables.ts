@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   cafeTables,
+  menuItems,
   orderItems,
   orders,
   tableActivityLogs,
@@ -9,12 +10,14 @@ import {
   tableSessionItems,
   tableSessions,
 } from "@/db/schema";
+import type { MenuPrepStation } from "@/lib/menu";
 
 export type AdminTableSessionItem = {
   id: number;
   sessionId: number;
   menuItemId: number | null;
   productName: string;
+  prepStation: MenuPrepStation;
   unitPriceInKurus: number;
   quantity: number;
   kitchenSentQuantity: number;
@@ -172,6 +175,10 @@ export async function ensureKitchenSchemaReady() {
   kitchenSchemaInFlight = (async () => {
     const db = getDb();
     await db.execute(sql`
+      alter table menu_items
+      add column if not exists prep_station varchar(24) not null default 'kitchen'
+    `);
+    await db.execute(sql`
       alter table table_session_items
       add column if not exists kitchen_sent_quantity integer not null default 0
     `);
@@ -308,8 +315,22 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
 
   const sessionItemRows = allSessionIds.length
     ? await db
-        .select()
+        .select({
+          id: tableSessionItems.id,
+          sessionId: tableSessionItems.sessionId,
+          menuItemId: tableSessionItems.menuItemId,
+          productName: tableSessionItems.productName,
+          prepStation: menuItems.prepStation,
+          unitPriceInKurus: tableSessionItems.unitPriceInKurus,
+          quantity: tableSessionItems.quantity,
+          kitchenSentQuantity: tableSessionItems.kitchenSentQuantity,
+          note: tableSessionItems.note,
+          source: tableSessionItems.source,
+          orderId: tableSessionItems.orderId,
+          createdAt: tableSessionItems.createdAt,
+        })
         .from(tableSessionItems)
+        .leftJoin(menuItems, eq(tableSessionItems.menuItemId, menuItems.id))
         .where(inArray(tableSessionItems.sessionId, allSessionIds))
         .orderBy(asc(tableSessionItems.createdAt), asc(tableSessionItems.id))
     : [];
@@ -362,6 +383,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
       sessionId: row.sessionId,
       menuItemId: row.menuItemId,
       productName: row.productName,
+      prepStation: row.prepStation === "counter" ? "counter" : "kitchen",
       unitPriceInKurus: row.unitPriceInKurus,
       quantity: row.quantity,
       kitchenSentQuantity: Math.min(row.quantity, Math.max(0, row.kitchenSentQuantity ?? 0)),

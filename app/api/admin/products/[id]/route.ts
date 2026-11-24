@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { menuItems } from "@/db/schema";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
 
 const accents = ["berry", "cream", "coffee", "citrus", "avocado"];
 
@@ -54,6 +55,7 @@ export async function PATCH(
       throw new Error("Kalori bilgisi geçersiz.");
     }
 
+    await ensureKitchenSchemaReady();
     const db = getDb();
     await db
       .update(menuItems)
@@ -68,6 +70,7 @@ export async function PATCH(
         priceInKurus,
         badge: optionalText(body.badge, 40),
         accent: accents.includes(String(body.accent)) ? String(body.accent) : "cream",
+        prepStation: body.prepStation === "counter" ? "counter" : "kitchen",
         isFeatured: Boolean(body.isFeatured),
         isActive: body.isActive !== false,
         updatedAt: new Date(),

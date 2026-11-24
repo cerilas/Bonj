@@ -73,6 +73,7 @@ export const menuItems = pgTable(
     priceInKurus: integer("price_in_kurus"),
     badge: varchar("badge", { length: 40 }),
     accent: varchar("accent", { length: 24 }).notNull().default("cream"),
+    prepStation: varchar("prep_station", { length: 24 }).notNull().default("kitchen"),
     sortOrder: integer("sort_order").notNull().default(0),
     isFeatured: boolean("is_featured").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),

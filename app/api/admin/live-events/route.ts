@@ -1,8 +1,9 @@
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { cafeTables, orderItems, orders, tableActivityLogs, tableSessions } from "@/db/schema";
+import { cafeTables, menuItems, orderItems, orders, tableActivityLogs, tableSessions } from "@/db/schema";
 import { getCurrentAdmin } from "@/lib/admin-auth";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export type LiveOrderItem = {
   unitPriceInKurus: number;
   lineTotalInKurus: number;
   note?: string | null;
+  prepStation?: "kitchen" | "counter";
 };
 
 export type AdminLiveEvent =
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
   // 5-second overlap prevents missing orders across concurrent DB transactions or clock skew
   const since = new Date(baseSince.getTime() - 5000);
 
+  await ensureKitchenSchemaReady();
   const db = getDb();
 
   const newOrders = await db
@@ -105,8 +108,10 @@ export async function GET(request: Request) {
           quantity: orderItems.quantity,
           unitPriceInKurus: orderItems.unitPriceInKurus,
           lineTotalInKurus: orderItems.lineTotalInKurus,
+          prepStation: menuItems.prepStation,
         })
         .from(orderItems)
+        .leftJoin(menuItems, eq(orderItems.menuItemId, menuItems.id))
         .where(inArray(orderItems.orderId, newOrderIds))
         .orderBy(asc(orderItems.id))
     : [];
@@ -119,6 +124,7 @@ export async function GET(request: Request) {
       quantity: item.quantity,
       unitPriceInKurus: item.unitPriceInKurus,
       lineTotalInKurus: item.lineTotalInKurus,
+      prepStation: item.prepStation === "counter" ? "counter" : "kitchen",
     });
     itemsByOrderId.set(item.orderId, list);
   }
