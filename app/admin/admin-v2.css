@@ -2468,7 +2468,7 @@
     max-width: 100%;
     display: block !important;
     margin: 0 auto;
-    padding-bottom: 6mm;
+    padding-bottom: 32mm;
     background: #fff !important;
     color: #000 !important;
     font-family: Arial, sans-serif;
@@ -2519,7 +2519,7 @@
   .admin-order-print-note span { font-size: 2mm; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
   .admin-order-print-note p { margin: 1.5mm 0 0; font-size: 2.8mm; font-weight: 700; line-height: 1.4; white-space: pre-wrap; }
 
-  .admin-order-print > footer { display: flex; justify-content: space-between; gap: 4mm; margin-top: 4mm; padding-bottom: 4mm; font-size: 2mm; }
+  .admin-order-print > footer { display: flex; justify-content: space-between; gap: 4mm; margin-top: 4mm; padding-bottom: 24mm; font-size: 2mm; }
   .admin-order-print > footer small { font-size: inherit; }
 }
 
@@ -6319,5 +6319,300 @@ html[data-theme="dark"] .bonj-auth-logo {
 
   .admin-hw-net-fields button {
     grid-column: 1 / -1;
+  }
+}
+
+/* Kitchen delta tracking, ticket pills, inline item notes, and special kitchen orders */
+.admin-pos-table-kitchen-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.admin-pos-table-kitchen-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-pos-table-kitchen-pill:hover {
+  background: rgba(22, 163, 74, 0.2);
+}
+
+.admin-pos-table-kitchen-pending {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-pos-tool-btn.is-kitchen-pending {
+  border-color: rgba(217, 119, 6, 0.55);
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
+}
+
+.admin-pos-tool-btn.is-kitchen-sent {
+  border-color: rgba(22, 163, 74, 0.45);
+  background: rgba(22, 163, 74, 0.11);
+  color: #15803d;
+}
+
+.admin-pos-special-kitchen-box {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-pos-special-kitchen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-pos-special-kitchen-head strong {
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+.admin-pos-special-kitchen-head small {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.admin-pos-special-kitchen-fields {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 0.6fr auto;
+  gap: 8px;
+}
+
+.admin-pos-special-kitchen-fields input,
+.admin-pos-pre-note-row input,
+.admin-pos-item-note-edit input {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel);
+  color: var(--admin-ink);
+  font-size: 13px;
+}
+
+.admin-pos-special-kitchen-fields button[type="submit"] {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 0;
+  background: var(--admin-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-pos-quick-note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-pos-quick-note-chips button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel);
+  color: var(--admin-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-pos-quick-note-chips button:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+
+.admin-pos-pre-note-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-pos-bill-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.admin-pos-item-kitchen-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.admin-pos-item-kitchen-badge.is-sent {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.admin-pos-item-kitchen-badge.is-pending {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.admin-pos-item-note-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(182, 87, 50, 0.12);
+  color: var(--admin-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-pos-item-note-btn {
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--admin-line-strong);
+  background: transparent;
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-pos-item-note-btn:hover {
+  color: var(--admin-ink);
+  border-color: var(--admin-ink);
+}
+
+.admin-pos-item-note-edit {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.admin-pos-item-note-edit input {
+  flex: 1 1 160px;
+  min-height: 34px;
+  font-size: 12px;
+}
+
+.admin-pos-item-note-edit button {
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel);
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-pos-kitchen-ticket-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-pos-kitchen-ticket-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-pos-kitchen-ticket-head strong {
+  font-size: 14px;
+  color: var(--admin-ink);
+}
+
+.admin-pos-kitchen-ticket-head small {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.admin-pos-kitchen-ticket-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-pos-kitchen-ticket-items li {
+  font-size: 13px;
+  color: var(--admin-ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.admin-pos-kitchen-ticket-items li span {
+  font-size: 12px;
+  color: var(--admin-accent);
+  font-weight: 700;
+}
+
+.admin-pos-kitchen-ticket-note {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(182, 87, 50, 0.1);
+  color: var(--admin-ink);
+  font-size: 12px;
+}
+
+:root[data-admin-theme="dark"] .admin-pos-table-kitchen-pill,
+:root[data-admin-theme="dark"] .admin-pos-tool-btn.is-kitchen-sent,
+:root[data-admin-theme="dark"] .admin-pos-item-kitchen-badge.is-sent {
+  color: #4ade80;
+}
+
+:root[data-admin-theme="dark"] .admin-pos-table-kitchen-pending,
+:root[data-admin-theme="dark"] .admin-pos-tool-btn.is-kitchen-pending,
+:root[data-admin-theme="dark"] .admin-pos-item-kitchen-badge.is-pending {
+  color: #fbbf24;
+}
+
+@media (max-width: 960px) {
+  .admin-pos-special-kitchen-fields {
+    grid-template-columns: 1fr;
   }
 }

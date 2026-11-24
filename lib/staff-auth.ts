@@ -141,7 +141,15 @@ export async function logTableActivity({
   tableId: number;
   sessionId?: number | null;
   operator: TableOperator;
-  action: "open" | "add_item" | "update_item" | "remove_item" | "move" | "close" | "update_meta";
+  action:
+    | "open"
+    | "add_item"
+    | "update_item"
+    | "remove_item"
+    | "move"
+    | "close"
+    | "update_meta"
+    | "kitchen_send";
   summary: string;
 }) {
   const db = getDb();

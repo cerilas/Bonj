@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CUSTOMER_DISPLAY_CHANNEL,
   CUSTOMER_DISPLAY_STORAGE_KEY,
@@ -30,6 +30,7 @@ export function CustomerDisplayExperience() {
   const [now, setNow] = useState(() => new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isOsFullscreen, setIsOsFullscreen] = useState(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const rafId = window.requestAnimationFrame(() => {
@@ -89,6 +90,25 @@ export function CustomerDisplayExperience() {
     return () => window.clearTimeout(timer);
   }, [state]);
 
+  // Draw scannable Menu QR code in idle mode
+  useEffect(() => {
+    if (state.mode !== "idle" || !qrCanvasRef.current) return;
+    const canvas = qrCanvasRef.current;
+    const isLocalHost =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const menuUrl = isLocalHost
+      ? "https://bonjcakestory.com/menu"
+      : `${window.location.origin}/menu`;
+    void import("qrcode").then(({ default: QRCode }) =>
+      QRCode.toCanvas(canvas, menuUrl, {
+        width: 144,
+        margin: 1,
+        color: { dark: "#171114", light: "#fffaf3" },
+        errorCorrectionLevel: "M",
+      }).catch(() => {}),
+    );
+  }, [state.mode]);
+
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
       void document.documentElement.requestFullscreen?.().catch(() => {});
@@ -124,41 +144,39 @@ export function CustomerDisplayExperience() {
       : "";
 
   return (
-    <main className="cd-screen">
-      <header className="cd-header">
-        <div className="cd-brand">
-          <BrandLogo className="cd-logo" alt="bonj" priority />
-          <div className="cd-brand-copy">
-            <strong>bonj cake story</strong>
-            <span>Gaziantep · Kasa Müşteri Ekranı</span>
+    <main className={`cd-screen ${state.mode === "idle" ? "is-idle" : ""}`}>
+      {state.mode !== "idle" && (
+        <header className="cd-header">
+          <div className="cd-brand">
+            <BrandLogo className="cd-logo" alt="bonj" priority />
+            <div className="cd-brand-copy">
+              <strong>bonj cake story</strong>
+              <span>Kasa Müşteri Ekranı</span>
+            </div>
           </div>
-        </div>
 
-        <div className="cd-header-right">
-          <span className={`cd-status-pill is-${state.mode}`}>
-            <i aria-hidden="true" />
-            {state.mode === "checkout"
-              ? state.sourceLabel
-              : state.mode === "paid"
-                ? "Ödeme Tamamlandı"
-                : "Hazır"}
-          </span>
-          <div className="cd-clock">
-            <strong>{timeText}</strong>
-            <small>{dateText}</small>
+          <div className="cd-header-right">
+            <span className={`cd-status-pill is-${state.mode}`}>
+              <i aria-hidden="true" />
+              {state.mode === "checkout" ? state.sourceLabel : "Ödeme Tamamlandı"}
+            </span>
+            <div className="cd-clock">
+              <strong>{timeText}</strong>
+              <small>{dateText}</small>
+            </div>
+            {!isOsFullscreen && (
+              <button
+                type="button"
+                className="cd-fs-btn"
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Tam ekrandan çık" : "Tam ekran"}
+              >
+                {isFullscreen ? "Küçült" : "Tam Ekran"}
+              </button>
+            )}
           </div>
-          {!isOsFullscreen && (
-            <button
-              type="button"
-              className="cd-fs-btn"
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? "Tam ekrandan çık" : "Tam ekran"}
-            >
-              {isFullscreen ? "Küçült" : "Tam Ekran"}
-            </button>
-          )}
-        </div>
-      </header>
+        </header>
+      )}
 
       {state.mode === "idle" && (
         <section className="cd-idle">
@@ -173,20 +191,41 @@ export function CustomerDisplayExperience() {
             aria-hidden="true"
           />
           <div className="cd-idle-scrim" aria-hidden="true" />
+
+          <div className="cd-idle-top-right">
+            <span className="cd-idle-clock">{timeText}</span>
+            {!isOsFullscreen && (
+              <button
+                type="button"
+                className="cd-idle-fs-btn"
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Tam ekrandan çık" : "Tam ekran"}
+              >
+                {isFullscreen ? "Küçült" : "Tam Ekran"}
+              </button>
+            )}
+          </div>
+
           <div className="cd-idle-card">
             <BrandLogo className="cd-idle-logo" alt="bonj" />
-            <span className="cd-eyebrow">GAZİANTEP · PASTANE &amp; KAHVE</span>
             <h1>
               <em>hoş geldiniz.</em>
             </h1>
-            <p>
-              San Sebastian cheesecake, taze kruvasan ve nitelikli kahvelerimizle hizmetinizdeyiz.
-              Sipariş tutarınız işlem sırasında burada anlık olarak görüntülenir.
-            </p>
-            <div className="cd-idle-meta">
-              <span>QR Menü: <strong>bonjcakestory.com/menu</strong></span>
+            <div className="cd-idle-qr-wrap">
+              <div className="cd-idle-qr-box">
+                <canvas
+                  ref={qrCanvasRef}
+                  className="cd-idle-qr-canvas"
+                  aria-label="Menü QR Kodu"
+                />
+              </div>
+              <span>MENÜ</span>
             </div>
           </div>
+
+          <span className="cd-idle-cerilas" aria-hidden="true">
+            Cerilas
+          </span>
         </section>
       )}
 
@@ -311,10 +350,12 @@ export function CustomerDisplayExperience() {
         </section>
       )}
 
-      <footer className="cd-footer">
-        <span>bonj cake story · Gaziantep</span>
-        <span>@bonjcakestory</span>
-      </footer>
+      {state.mode !== "idle" && (
+        <footer className="cd-footer">
+          <span>bonj cake story</span>
+          <span>@bonjcakestory</span>
+        </footer>
+      )}
     </main>
   );
 }

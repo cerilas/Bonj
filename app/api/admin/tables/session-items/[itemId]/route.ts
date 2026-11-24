@@ -30,6 +30,7 @@ export async function PATCH(
       id: tableSessionItems.id,
       sessionId: tableSessionItems.sessionId,
       productName: tableSessionItems.productName,
+      kitchenSentQuantity: tableSessionItems.kitchenSentQuantity,
       tableId: tableSessions.tableId,
     })
     .from(tableSessionItems)
@@ -55,9 +56,14 @@ export async function PATCH(
       return NextResponse.json({ ok: true, deleted: true });
     }
     const clampedQty = Math.min(99, qty);
+    const nextSentQty = Math.min(clampedQty, Math.max(0, existing.kitchenSentQuantity ?? 0));
     await db
       .update(tableSessionItems)
-      .set({ quantity: clampedQty, updatedAt: new Date() })
+      .set({
+        quantity: clampedQty,
+        kitchenSentQuantity: nextSentQty,
+        updatedAt: new Date(),
+      })
       .where(eq(tableSessionItems.id, id));
     await logTableActivity({
       tableId: existing.tableId,
@@ -99,6 +105,7 @@ export async function DELETE(
       id: tableSessionItems.id,
       sessionId: tableSessionItems.sessionId,
       productName: tableSessionItems.productName,
+      kitchenSentQuantity: tableSessionItems.kitchenSentQuantity,
       tableId: tableSessions.tableId,
     })
     .from(tableSessionItems)

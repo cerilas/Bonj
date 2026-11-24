@@ -41,6 +41,7 @@ export type LocalReceiptPrintPayload = {
     quantity: number;
     unitPriceInKurus: number;
     lineTotalInKurus: number;
+    note?: string | null;
   }>;
 };
 

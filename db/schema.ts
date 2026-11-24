@@ -535,6 +535,7 @@ export const tableSessionItems = pgTable(
     productName: varchar("product_name", { length: 120 }).notNull(),
     unitPriceInKurus: integer("unit_price_in_kurus").notNull(),
     quantity: integer("quantity").notNull().default(1),
+    kitchenSentQuantity: integer("kitchen_sent_quantity").notNull().default(0),
     note: varchar("note", { length: 180 }),
     source: varchar("source", { length: 20 }).notNull().default("pos"),
     orderId: integer("order_id")
@@ -620,6 +621,30 @@ export const tableActivityLogs = pgTable(
   ],
 );
 
+export const tableKitchenTickets = pgTable(
+  "table_kitchen_tickets",
+  {
+    id: serial("id").primaryKey(),
+    tableId: integer("table_id")
+      .notNull()
+      .references(() => cafeTables.id, { onDelete: "cascade" }),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => tableSessions.id, { onDelete: "cascade" }),
+    ticketNumber: integer("ticket_number").notNull().default(1),
+    actorName: varchar("actor_name", { length: 120 }).notNull().default("Kasa"),
+    note: text("note"),
+    itemsJson: text("items_json").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("table_kitchen_tickets_session_idx").on(table.sessionId, table.id),
+    index("table_kitchen_tickets_table_idx").on(table.tableId, table.createdAt),
+  ],
+);
+
 export const posHardwareSettings = pgTable(
   "pos_hardware_settings",
   {
@@ -663,5 +688,6 @@ export type TableSessionItemRecord = typeof tableSessionItems.$inferSelect;
 export type StaffUserRecord = typeof staffUsers.$inferSelect;
 export type StaffSessionRecord = typeof staffSessions.$inferSelect;
 export type TableActivityLogRecord = typeof tableActivityLogs.$inferSelect;
+export type TableKitchenTicketRecord = typeof tableKitchenTickets.$inferSelect;
 export type PosHardwareSettingsRecord = typeof posHardwareSettings.$inferSelect;
 

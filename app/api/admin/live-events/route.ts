@@ -11,6 +11,7 @@ export type LiveOrderItem = {
   quantity: number;
   unitPriceInKurus: number;
   lineTotalInKurus: number;
+  note?: string | null;
 };
 
 export type AdminLiveEvent =
@@ -44,7 +45,10 @@ export type AdminLiveEvent =
     };
 
 function parseStaffAddedItem(summary: string): LiveOrderItem[] {
-  const match = summary.match(/(\d+)\s*[×x]\s+(.+?)\s+ekledi\.?$/i);
+  const noteMatch = summary.match(/\[Not:\s*(.+?)\]\s*$/i);
+  const itemNote = noteMatch ? noteMatch[1].trim() : null;
+  const cleanSummary = noteMatch ? summary.slice(0, noteMatch.index).trim() : summary;
+  const match = cleanSummary.match(/(\d+)\s*[×x]\s+(.+?)\s+ekledi\.?$/i);
   if (!match) return [];
   const quantity = Math.max(1, Number(match[1]) || 1);
   const productName = match[2].trim();
@@ -55,6 +59,7 @@ function parseStaffAddedItem(summary: string): LiveOrderItem[] {
       quantity,
       unitPriceInKurus: 0,
       lineTotalInKurus: 0,
+      note: itemNote,
     },
   ];
 }

@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AdminCafeTable, AdminClosedTableSession, AdminTablesSnapshot } from "@/lib/admin-tables";
+import type {
+  AdminCafeTable,
+  AdminClosedTableSession,
+  AdminTableKitchenTicket,
+  AdminTablesSnapshot,
+} from "@/lib/admin-tables";
 import { publishCustomerDisplayState } from "@/lib/customer-display";
 import type { PosHardwareSettingsDTO } from "@/lib/pos-hardware";
 import {
@@ -10,6 +15,18 @@ import {
 } from "@/lib/pos-hardware-client";
 import { BrandLogo } from "../components/BrandLogo";
 import { UiIcon } from "../components/UiIcon";
+
+const QUICK_KITCHEN_NOTES = [
+  "Az tuzlu",
+  "Tuzsuz",
+  "Bol yağlı",
+  "Az yağlı",
+  "Az pişmiş",
+  "İyi pişmiş",
+  "Soğansız",
+  "Sütsüz",
+  "Sıcak",
+] as const;
 
 type CatalogItem = {
   id?: number;
@@ -33,6 +50,7 @@ export type PosPrintReceiptData = {
     quantity: number;
     unitPriceInKurus: number;
     lineTotalInKurus: number;
+    note?: string | null;
   }>;
   subtotalInKurus: number;
   discountInKurus: number;
@@ -141,6 +159,14 @@ export function AdminTablesPanel({
   const [showCustomItemForm, setShowCustomItemForm] = useState(false);
   const [showTableTools, setShowTableTools] = useState(false);
   const [mobilePosTab, setMobilePosTab] = useState<"menu" | "ticket">("menu");
+  const [itemNoteDraft, setItemNoteDraft] = useState("");
+  const [editingNoteItemId, setEditingNoteItemId] = useState<number | null>(null);
+  const [editingNoteValue, setEditingNoteValue] = useState("");
+  const [showSpecialKitchenBox, setShowSpecialKitchenBox] = useState(false);
+  const [specialKitchenText, setSpecialKitchenText] = useState("");
+  const [specialKitchenNote, setSpecialKitchenNote] = useState("");
+  const [specialKitchenPrice, setSpecialKitchenPrice] = useState("");
+  const [kitchenModalTableId, setKitchenModalTableId] = useState<number | null>(null);
 
   // Move table
   const [moveTargetId, setMoveTargetId] = useState("");
@@ -261,6 +287,13 @@ export function AdminTablesPanel({
   function handleSelectTable(table: AdminCafeTable) {
     setShowTableTools(false);
     setShowCustomItemForm(false);
+    setShowSpecialKitchenBox(false);
+    setEditingNoteItemId(null);
+    setEditingNoteValue("");
+    setItemNoteDraft("");
+    setSpecialKitchenText("");
+    setSpecialKitchenNote("");
+    setSpecialKitchenPrice("");
     setMobilePosTab(table.activeSession ? "ticket" : "menu");
     setSelectedTableId(table.id);
   }
@@ -403,9 +436,176 @@ export function AdminTablesPanel({
     }
   }
 
+  async function printKitchenTicketDirect(
+    table: { name: string; zone: string },
+    ticket: AdminTableKitchenTicket,
+    sessionMeta?: { openedAt: string; guestCount: number; customerName: string | null; note: string | null } | null,
+  ) {
+    if (staffMode || !bridgeConnected || !hwSettings?.kitchenPrinterName) return false;
+    const res = await sendLocalBridgeReceiptPrint({
+      target: "kitchen",
+      printerName: hwSettings.kitchenPrinterName,
+      paperWidthMm: hwSettings.paperWidthMm ?? 80,
+      tableZone: table.zone,
+      tableName: `${table.name} · Fiş #${ticket.ticketNumber}`,
+      openedAt: ticket.createdAt || sessionMeta?.openedAt || new Date().toISOString(),
+      closedAt: null,
+      guestCount: sessionMeta?.guestCount ?? 1,
+      customerName: sessionMeta?.customerName ?? ticket.actorName,
+      note: ticket.note ?? sessionMeta?.note ?? null,
+      paymentMethod: null,
+      subtotalInKurus: 0,
+      discountInKurus: 0,
+      totalInKurus: 0,
+      items: ticket.items.map((it) => ({
+        productName: it.productName,
+        quantity: it.quantity,
+        unitPriceInKurus: 0,
+        lineTotalInKurus: 0,
+        note: it.note ?? null,
+      })),
+    });
+    if (res.ok) {
+      flashNotice(`Mutfak Fişi #${ticket.ticketNumber} (${hwSettings.kitchenPrinterName}) yazdırıldı.`);
+      return true;
+    }
+    setError(res.error || "Mutfak yazıcısına gönderilemedi.");
+    return false;
+  }
+
+  async function sendDeltaToKitchen(
+    tableId: number,
+    options?: {
+      itemIds?: number[];
+      customOrderText?: string;
+      note?: string;
+      forcePrintNotice?: boolean;
+    },
+  ) {
+    const res = await fetch(`/api/admin/tables/${tableId}/kitchen-send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        itemIds: options?.itemIds,
+        customOrderText: options?.customOrderText,
+        note: options?.note,
+      }),
+    });
+    const data = (await res.json()) as {
+      error?: string;
+      nothingPending?: boolean;
+      ticket?: AdminTableKitchenTicket | null;
+      table?: { id: number; name: string; zone: string };
+      session?: { openedAt: string; guestCount: number; customerName: string | null; note: string | null } | null;
+    };
+    if (!res.ok) {
+      throw new Error(data.error || "Mutfağa gönderilemedi.");
+    }
+    if (data.nothingPending || !data.ticket) {
+      if (options?.forcePrintNotice) {
+        flashNotice("Bu masada mutfağa gönderilecek yeni ürün bulunmuyor.");
+      }
+      return null;
+    }
+    if (!staffMode && bridgeConnected && hwSettings?.kitchenPrinterName && data.table) {
+      await printKitchenTicketDirect(data.table, data.ticket, data.session);
+    } else if (options?.forcePrintNotice) {
+      flashNotice(`Mutfak Fişi #${data.ticket.ticketNumber} mutfak listesine işlendi.`);
+    }
+    return data.ticket;
+  }
+
+  async function handleSendPendingToKitchen() {
+    if (!selectedTable || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await sendDeltaToKitchen(selectedTable.id, { forcePrintNotice: true });
+      await loadSnapshot();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mutfağa gönderilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveItemNote(itemId: number) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/tables/session-items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: editingNoteValue.trim() }),
+      });
+      if (!res.ok) throw new Error("Ürün notu kaydedilemedi.");
+      setEditingNoteItemId(null);
+      setEditingNoteValue("");
+      await loadSnapshot();
+      flashNotice("Ürün mutfak notu kaydedildi.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ürün notu kaydedilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSpecialKitchenSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedTable || busy) return;
+    const orderText = specialKitchenText.trim();
+    const noteText = specialKitchenNote.trim();
+    if (!orderText && !noteText) return;
+    const priceKurus = Math.max(0, Math.round((Number(specialKitchenPrice.replace(",", ".")) || 0) * 100));
+
+    setBusy(true);
+    setError("");
+    try {
+      if (orderText && priceKurus > 0) {
+        const res = await fetch(`/api/admin/tables/${selectedTable.id}/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName: orderText,
+            unitPriceInKurus: priceKurus,
+            quantity: 1,
+            note: noteText || undefined,
+          }),
+        });
+        const data = (await res.json()) as { error?: string; item?: { id: number } };
+        if (!res.ok) throw new Error(data.error || "Özel sipariş eklenemedi.");
+        if (!staffMode) {
+          await sendDeltaToKitchen(selectedTable.id, {
+            itemIds: data.item?.id ? [data.item.id] : undefined,
+            forcePrintNotice: true,
+          });
+        } else {
+          flashNotice("Özel sipariş adisyona eklendi.");
+        }
+      } else {
+        await sendDeltaToKitchen(selectedTable.id, {
+          customOrderText: orderText || undefined,
+          note: noteText || undefined,
+          forcePrintNotice: true,
+        });
+      }
+      setSpecialKitchenText("");
+      setSpecialKitchenNote("");
+      setSpecialKitchenPrice("");
+      setShowSpecialKitchenBox(false);
+      await loadSnapshot();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Özel sipariş mutfağa gönderilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleAddMenuItem(item: CatalogItem) {
     if (!selectedTable || !item.id || busy) return;
     const qty = Math.max(1, Math.min(99, Math.round(Number(addQty) || 1)));
+    const noteToAttach = itemNoteDraft.trim();
     setBusy(true);
     setAddingLabel(`${item.name} (${qty}×) masaya ekleniyor…`);
     setError("");
@@ -413,36 +613,24 @@ export function AdminTablesPanel({
       const res = await fetch(`/api/admin/tables/${selectedTable.id}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ menuItemId: item.id, quantity: qty }),
+        body: JSON.stringify({
+          menuItemId: item.id,
+          quantity: qty,
+          note: noteToAttach || undefined,
+        }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; item?: { id: number } };
       if (!res.ok) throw new Error(data.error || "Ürün eklenemedi.");
       setAddQty("1");
-      if (hwSettings?.autoPrintKitchenOnOrder && bridgeConnected && hwSettings.kitchenPrinterName) {
-        void sendLocalBridgeReceiptPrint({
-          target: "kitchen",
-          printerName: hwSettings.kitchenPrinterName,
-          paperWidthMm: hwSettings.paperWidthMm,
-          tableZone: selectedTable.zone,
-          tableName: selectedTable.name,
-          openedAt: selectedTable.activeSession?.openedAt ?? new Date().toISOString(),
-          closedAt: null,
-          guestCount: selectedTable.activeSession?.guestCount ?? 2,
-          customerName: selectedTable.activeSession?.customerName ?? null,
-          note: selectedTable.activeSession?.note ?? null,
-          paymentMethod: null,
-          subtotalInKurus: (item.priceInKurus ?? 0) * qty,
-          discountInKurus: 0,
-          totalInKurus: (item.priceInKurus ?? 0) * qty,
-          items: [
-            {
-              productName: item.name,
-              quantity: qty,
-              unitPriceInKurus: item.priceInKurus ?? 0,
-              lineTotalInKurus: (item.priceInKurus ?? 0) * qty,
-            },
-          ],
-        });
+      setItemNoteDraft("");
+      if (
+        !staffMode &&
+        hwSettings?.autoPrintKitchenOnOrder &&
+        bridgeConnected &&
+        hwSettings.kitchenPrinterName &&
+        data.item?.id
+      ) {
+        await sendDeltaToKitchen(selectedTable.id, { itemIds: [data.item.id] });
       }
       await loadSnapshot();
     } catch (err) {
@@ -459,6 +647,7 @@ export function AdminTablesPanel({
     const priceKurus = Math.round((Number(customItemPrice.replace(",", ".")) || 0) * 100);
     if (!customItemName.trim()) return;
     const qty = Math.max(1, Math.min(99, Math.round(Number(addQty) || 1)));
+    const noteToAttach = itemNoteDraft.trim();
     setBusy(true);
     setAddingLabel(`${customItemName.trim()} (${qty}×) ekleniyor…`);
     setError("");
@@ -470,39 +659,23 @@ export function AdminTablesPanel({
           productName: customItemName.trim(),
           unitPriceInKurus: priceKurus,
           quantity: qty,
+          note: noteToAttach || undefined,
         }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; item?: { id: number } };
       if (!res.ok) throw new Error(data.error || "Kalem eklenemedi.");
-      const addedName = customItemName.trim();
       setCustomItemName("");
       setCustomItemPrice("");
       setAddQty("1");
-      if (hwSettings?.autoPrintKitchenOnOrder && bridgeConnected && hwSettings.kitchenPrinterName) {
-        void sendLocalBridgeReceiptPrint({
-          target: "kitchen",
-          printerName: hwSettings.kitchenPrinterName,
-          paperWidthMm: hwSettings.paperWidthMm,
-          tableZone: selectedTable.zone,
-          tableName: selectedTable.name,
-          openedAt: selectedTable.activeSession?.openedAt ?? new Date().toISOString(),
-          closedAt: null,
-          guestCount: selectedTable.activeSession?.guestCount ?? 2,
-          customerName: selectedTable.activeSession?.customerName ?? null,
-          note: selectedTable.activeSession?.note ?? null,
-          paymentMethod: null,
-          subtotalInKurus: priceKurus * qty,
-          discountInKurus: 0,
-          totalInKurus: priceKurus * qty,
-          items: [
-            {
-              productName: addedName,
-              quantity: qty,
-              unitPriceInKurus: priceKurus,
-              lineTotalInKurus: priceKurus * qty,
-            },
-          ],
-        });
+      setItemNoteDraft("");
+      if (
+        !staffMode &&
+        hwSettings?.autoPrintKitchenOnOrder &&
+        bridgeConnected &&
+        hwSettings.kitchenPrinterName &&
+        data.item?.id
+      ) {
+        await sendDeltaToKitchen(selectedTable.id, { itemIds: [data.item.id] });
       }
       await loadSnapshot();
     } catch (err) {
@@ -695,6 +868,17 @@ export function AdminTablesPanel({
   }
 
   const activeSession = selectedTable?.activeSession ?? null;
+  const kitchenTickets = activeSession?.kitchenTickets ?? [];
+  const pendingKitchenCount = activeSession
+    ? activeSession.items.reduce(
+        (sum, item) => sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
+        0,
+      )
+    : 0;
+  const kitchenModalTable: AdminCafeTable | null = useMemo(() => {
+    if (!snapshot || kitchenModalTableId === null) return null;
+    return snapshot.tables.find((t) => t.id === kitchenModalTableId) ?? null;
+  }, [snapshot, kitchenModalTableId]);
   const discountKurus = Math.max(0, Math.round((Number(discountTl.replace(",", ".")) || 0) * 100));
   const posSubtotal = activeSession?.subtotalInKurus ?? 0;
   const payableKurus = Math.max(0, posSubtotal - discountKurus);
@@ -967,12 +1151,27 @@ export function AdminTablesPanel({
                 const totalKurus =
                   (table.activeSession?.subtotalInKurus ?? 0) +
                   table.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0);
+                const cardKitchenTickets = table.activeSession?.kitchenTickets ?? [];
+                const cardPendingKitchen = table.activeSession
+                  ? table.activeSession.items.reduce(
+                      (sum, item) =>
+                        sum + Math.max(0, item.quantity - (item.kitchenSentQuantity ?? 0)),
+                      0,
+                    )
+                  : 0;
 
                 return (
-                  <button
+                  <div
                     key={table.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelectTable(table)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectTable(table);
+                      }
+                    }}
                     className={`admin-pos-table-card ${isOpen ? "is-open" : "is-free"} ${hasQr ? "has-qr" : ""}`}
                   >
                     <div className="admin-pos-table-card-inner">
@@ -1002,6 +1201,28 @@ export function AdminTablesPanel({
                           </>
                         )}
                       </div>
+                      {(cardKitchenTickets.length > 0 || cardPendingKitchen > 0) && (
+                        <div className="admin-pos-table-kitchen-row">
+                          {cardKitchenTickets.length > 0 && (
+                            <button
+                              type="button"
+                              className="admin-pos-table-kitchen-pill"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setKitchenModalTableId(table.id);
+                              }}
+                              title="Mutfağa gönderilen fişleri ve ürünleri gör"
+                            >
+                              Mutfak: {cardKitchenTickets.length} fiş
+                            </button>
+                          )}
+                          {cardPendingKitchen > 0 && (
+                            <span className="admin-pos-table-kitchen-pending">
+                              +{cardPendingKitchen} yeni
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="admin-pos-table-total">
                         {isOpen || hasQr ? (
                           <>
@@ -1013,7 +1234,7 @@ export function AdminTablesPanel({
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -1047,6 +1268,13 @@ export function AdminTablesPanel({
             </div>
 
             <div className="admin-pos-terminal-actions">
+              <button
+                type="button"
+                className={`admin-pos-tool-btn ${showSpecialKitchenBox ? "is-active" : ""}`}
+                onClick={() => setShowSpecialKitchenBox((v) => !v)}
+              >
+                Özel Sipariş / Not
+              </button>
               {activeSession ? (
                 <>
                   <div className="admin-pos-guest-stepper">
@@ -1085,28 +1313,24 @@ export function AdminTablesPanel({
                   {activeSession.items.length > 0 && (
                     <button
                       type="button"
-                      className="admin-pos-tool-btn"
-                      onClick={() =>
-                        void printReceiptSmart(
-                          {
-                            tableName: selectedTable.name,
-                            tableZone: selectedTable.zone,
-                            openedAt: activeSession.openedAt,
-                            closedAt: null,
-                            guestCount: activeSession.guestCount,
-                            customerName: activeSession.customerName,
-                            note: sessionNoteDraft.trim() || null,
-                            items: activeSession.items,
-                            subtotalInKurus: posSubtotal,
-                            discountInKurus: discountKurus,
-                            totalInKurus: payableKurus,
-                            paymentMethod: null,
-                          },
-                          "kitchen",
-                        )
-                      }
+                      className={`admin-pos-tool-btn ${
+                        pendingKitchenCount > 0 ? "is-kitchen-pending" : "is-kitchen-sent"
+                      }`}
+                      disabled={busy}
+                      onClick={() => void handleSendPendingToKitchen()}
                     >
-                      Mutfak Fişi
+                      {pendingKitchenCount > 0
+                        ? `Mutfağa Gönder (${pendingKitchenCount} yeni)`
+                        : "Tümü Mutfakta ✓"}
+                    </button>
+                  )}
+                  {kitchenTickets.length > 0 && (
+                    <button
+                      type="button"
+                      className="admin-pos-tool-btn is-kitchen-sent"
+                      onClick={() => setKitchenModalTableId(selectedTable.id)}
+                    >
+                      Mutfak Fişleri ({kitchenTickets.length})
                     </button>
                   )}
                   <button
@@ -1166,6 +1390,59 @@ export function AdminTablesPanel({
 
           {error && <p className="admin-pos-error" role="alert">{error}</p>}
           {notice && <p className="admin-pos-notice" role="status">{notice}</p>}
+
+          {showSpecialKitchenBox && (
+            <form className="admin-pos-special-kitchen-box" onSubmit={handleSpecialKitchenSubmit}>
+              <div className="admin-pos-special-kitchen-head">
+                <strong>Mutfağa Özel Sipariş / Müşteri Tercihi Gönder</strong>
+                <small>
+                  Tutar girerseniz adisyona da eklenir; sadece mutfak talimatı / not için tutarı boş bırakın.
+                </small>
+              </div>
+              <div className="admin-pos-special-kitchen-fields">
+                <input
+                  type="text"
+                  placeholder="Özel sipariş adı (Örn: Glutensiz brownie / Yarım porsiyon pizza)"
+                  value={specialKitchenText}
+                  onChange={(e) => setSpecialKitchenText(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Müşteri tercihi / not (Örn: az tuzlu, bol yağlı, az pişmiş)"
+                  value={specialKitchenNote}
+                  onChange={(e) => setSpecialKitchenNote(e.target.value)}
+                />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Tutar ₺ (opsiyonel)"
+                  value={specialKitchenPrice}
+                  onChange={(e) => setSpecialKitchenPrice(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  disabled={busy || (!specialKitchenText.trim() && !specialKitchenNote.trim())}
+                >
+                  Mutfağa Gönder
+                </button>
+              </div>
+              <div className="admin-pos-quick-note-chips" role="group" aria-label="Hızlı mutfak tercihleri">
+                {QUICK_KITCHEN_NOTES.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() =>
+                      setSpecialKitchenNote((prev) =>
+                        prev.trim() ? `${prev.trim()}, ${chip.toLowerCase()}` : chip.toLowerCase(),
+                      )
+                    }
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+            </form>
+          )}
 
           {showTableTools && activeSession && (
             <div className="admin-pos-tools-bar">
@@ -1287,6 +1564,29 @@ export function AdminTablesPanel({
                   >
                     + Özel Kalem
                   </button>
+                </div>
+                <div className="admin-pos-pre-note-row">
+                  <input
+                    type="text"
+                    placeholder="Sonraki ürüne mutfak notu ekle (Örn: az tuzlu, bol yağlı…)"
+                    value={itemNoteDraft}
+                    onChange={(e) => setItemNoteDraft(e.target.value)}
+                  />
+                  <div className="admin-pos-quick-note-chips" role="group" aria-label="Hızlı ürün notları">
+                    {QUICK_KITCHEN_NOTES.slice(0, 6).map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() =>
+                          setItemNoteDraft((prev) =>
+                            prev.trim() ? `${prev.trim()}, ${chip.toLowerCase()}` : chip.toLowerCase(),
+                          )
+                        }
+                      >
+                        + {chip}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1429,34 +1729,109 @@ export function AdminTablesPanel({
                         Adisyon açık. Soldaki menüden ürün dokunarak ekleyin.
                       </p>
                     ) : (
-                      activeSession.items.map((item) => (
-                        <div key={item.id} className="admin-pos-bill-item">
-                          <div className="admin-pos-bill-item-info">
-                            <strong>{item.productName}</strong>
-                            <small>{money(item.unitPriceInKurus)} / adet</small>
+                      activeSession.items.map((item) => {
+                        const sentQty = Math.min(
+                          item.quantity,
+                          Math.max(0, item.kitchenSentQuantity ?? 0),
+                        );
+                        const waitingQty = Math.max(0, item.quantity - sentQty);
+                        const allSent = waitingQty === 0 && sentQty > 0;
+                        const statusLabel = allSent
+                          ? "✓ Mutfakta"
+                          : sentQty > 0
+                            ? `${sentQty} mutfakta · ${waitingQty} yeni`
+                            : "Bekliyor";
+
+                        return (
+                          <div key={item.id} className="admin-pos-bill-item">
+                            <div className="admin-pos-bill-item-info">
+                              <strong>{item.productName}</strong>
+                              <small>{money(item.unitPriceInKurus)} / adet</small>
+                              <div className="admin-pos-bill-item-meta">
+                                <span
+                                  className={`admin-pos-item-kitchen-badge ${
+                                    allSent ? "is-sent" : "is-pending"
+                                  }`}
+                                >
+                                  {statusLabel}
+                                </span>
+                                {item.note && (
+                                  <span className="admin-pos-item-note-pill">
+                                    Not: {item.note}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  className="admin-pos-item-note-btn"
+                                  onClick={() => {
+                                    if (editingNoteItemId === item.id) {
+                                      setEditingNoteItemId(null);
+                                      setEditingNoteValue("");
+                                    } else {
+                                      setEditingNoteItemId(item.id);
+                                      setEditingNoteValue(item.note ?? "");
+                                    }
+                                  }}
+                                >
+                                  {item.note ? "Not Düzenle" : "+ Mutfak Notu"}
+                                </button>
+                              </div>
+                              {editingNoteItemId === item.id && (
+                                <div className="admin-pos-item-note-edit">
+                                  <input
+                                    type="text"
+                                    placeholder="Örn: az tuzlu, bol yağlı…"
+                                    value={editingNoteValue}
+                                    onChange={(e) => setEditingNoteValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        void handleSaveItemNote(item.id);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => void handleSaveItemNote(item.id)}
+                                  >
+                                    Kaydet
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingNoteItemId(null);
+                                      setEditingNoteValue("");
+                                    }}
+                                  >
+                                    İptal
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="admin-pos-qty">
+                              <button
+                                type="button"
+                                onClick={() => void handleUpdateItemQty(item.id, item.quantity - 1)}
+                                disabled={busy}
+                                aria-label={`${item.productName} azalt`}
+                              >
+                                −
+                              </button>
+                              <span>{item.quantity}</span>
+                              <button
+                                type="button"
+                                onClick={() => void handleUpdateItemQty(item.id, item.quantity + 1)}
+                                disabled={busy}
+                                aria-label={`${item.productName} artır`}
+                              >
+                                +
+                              </button>
+                            </div>
+                            <b className="admin-pos-bill-line-total">{money(item.lineTotalInKurus)}</b>
                           </div>
-                          <div className="admin-pos-qty">
-                            <button
-                              type="button"
-                              onClick={() => void handleUpdateItemQty(item.id, item.quantity - 1)}
-                              disabled={busy}
-                              aria-label={`${item.productName} azalt`}
-                            >
-                              −
-                            </button>
-                            <span>{item.quantity}</span>
-                            <button
-                              type="button"
-                              onClick={() => void handleUpdateItemQty(item.id, item.quantity + 1)}
-                              disabled={busy}
-                              aria-label={`${item.productName} artır`}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <b className="admin-pos-bill-line-total">{money(item.lineTotalInKurus)}</b>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
@@ -1675,6 +2050,78 @@ export function AdminTablesPanel({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {kitchenModalTable && kitchenModalTable.activeSession && (
+        <div
+          className="admin-pos-receipt-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mutfağa Gönderilen Fişler"
+          onClick={() => setKitchenModalTableId(null)}
+        >
+          <div className="admin-pos-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-pos-history-head">
+              <div>
+                <strong>{kitchenModalTable.name} · Mutfak Fişleri</strong>
+                <small>
+                  {kitchenModalTable.zone} · Toplam{" "}
+                  {kitchenModalTable.activeSession.kitchenTickets.length} mutfak fişi gönderildi
+                </small>
+              </div>
+              <button type="button" onClick={() => setKitchenModalTableId(null)}>
+                Kapat
+              </button>
+            </div>
+            <div className="admin-pos-history-list">
+              {kitchenModalTable.activeSession.kitchenTickets.length === 0 ? (
+                <p className="admin-pos-empty">Henüz mutfağa fiş gönderilmemiş.</p>
+              ) : (
+                kitchenModalTable.activeSession.kitchenTickets.map((ticket) => (
+                  <div key={ticket.id} className="admin-pos-kitchen-ticket-card">
+                    <div className="admin-pos-kitchen-ticket-head">
+                      <div>
+                        <strong>Mutfak Fişi #{ticket.ticketNumber}</strong>
+                        <small>
+                          {" · "}
+                          {formatTime(ticket.createdAt)} · {ticket.actorName}
+                        </small>
+                      </div>
+                      {!staffMode && bridgeConnected && hwSettings?.kitchenPrinterName && (
+                        <button
+                          type="button"
+                          className="admin-pos-tool-btn"
+                          onClick={() =>
+                            void printKitchenTicketDirect(
+                              kitchenModalTable,
+                              ticket,
+                              kitchenModalTable.activeSession,
+                            )
+                          }
+                        >
+                          Tekrar Yazdır
+                        </button>
+                      )}
+                    </div>
+                    <ul className="admin-pos-kitchen-ticket-items">
+                      {ticket.items.map((it, idx) => (
+                        <li key={idx}>
+                          <b>{it.quantity}×</b> {it.productName}
+                          {it.note && <span>[Not: {it.note}]</span>}
+                        </li>
+                      ))}
+                    </ul>
+                    {ticket.note && (
+                      <div className="admin-pos-kitchen-ticket-note">
+                        <strong>Genel Not:</strong> {ticket.note}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

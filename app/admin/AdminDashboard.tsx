@@ -832,22 +832,80 @@ export function AdminDashboard({
 
       kitchenPrintQueueRef.current = kitchenPrintQueueRef.current.then(async () => {
         if (!active) return;
+
+        let itemsToPrint = ev.items;
+        let printTableName = tableName;
+        let printNote = ev.note;
+        let printOpenedAt = ev.createdAt;
+        let printGuestCount = 1;
+        let printCustomerName: string | null = isOrder ? ev.customerName : ev.actorName;
+
+        if (!isOrder && ev.action === "add_item") {
+          try {
+            const ksRes = await fetch(`/api/admin/tables/${ev.tableId}/kitchen-send`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            if (ksRes.ok) {
+              const ksData = (await ksRes.json()) as {
+                nothingPending?: boolean;
+                ticket?: {
+                  ticketNumber: number;
+                  note: string | null;
+                  createdAt: string;
+                  items: Array<{
+                    productName: string;
+                    quantity: number;
+                    note?: string | null;
+                  }>;
+                } | null;
+                session?: {
+                  openedAt: string;
+                  guestCount: number;
+                  customerName: string | null;
+                  note: string | null;
+                } | null;
+              };
+              if (ksData.nothingPending || !ksData.ticket || ksData.ticket.items.length === 0) {
+                return;
+              }
+              printTableName = `${tableName} · Fiş #${ksData.ticket.ticketNumber}`;
+              printNote = ksData.ticket.note ?? ksData.session?.note ?? ev.note;
+              printOpenedAt = ksData.ticket.createdAt || ev.createdAt;
+              printGuestCount = ksData.session?.guestCount ?? 1;
+              printCustomerName = ksData.session?.customerName ?? ev.actorName;
+              itemsToPrint = ksData.ticket.items.map((it) => ({
+                productName: it.productName,
+                quantity: it.quantity,
+                unitPriceInKurus: 0,
+                lineTotalInKurus: 0,
+                note: it.note ?? null,
+              }));
+            }
+          } catch {
+            // Fall back to printing the live-event delta item if ticket endpoint fails.
+          }
+        }
+
+        if (!active || itemsToPrint.length === 0) return;
+
         const payload = {
           target: "kitchen" as const,
           printerName: hw.kitchenPrinterName,
           paperWidthMm: hw.paperWidthMm,
           tableZone,
-          tableName,
-          openedAt: ev.createdAt,
+          tableName: printTableName,
+          openedAt: printOpenedAt,
           closedAt: null,
-          guestCount: 1,
-          customerName: isOrder ? ev.customerName : ev.actorName,
-          note: ev.note,
+          guestCount: printGuestCount,
+          customerName: printCustomerName,
+          note: printNote,
           paymentMethod: null,
           subtotalInKurus: isOrder ? ev.totalInKurus : 0,
           discountInKurus: 0,
           totalInKurus: isOrder ? ev.totalInKurus : 0,
-          items: ev.items,
+          items: itemsToPrint,
         };
 
         let result = await sendLocalBridgeReceiptPrint(payload);
@@ -862,7 +920,7 @@ export function AdminDashboard({
                 key: `print-err-${key}-${Date.now()}`,
                 badge: "YAZICI UYARISI",
                 tone: "delivery" as const,
-                title: `${tableName} mutfak fişi basılamadı`,
+                title: `${printTableName} mutfak fişi basılamadı`,
                 subtitle: result.error || `Mutfak yazıcısı (${hw.kitchenPrinterName}) bağlantısını kontrol edin.`,
                 createdAt: new Date().toISOString(),
                 event: ev,

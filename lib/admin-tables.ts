@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, gte, inArray, notInArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, notInArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   cafeTables,
   orderItems,
   orders,
   tableActivityLogs,
+  tableKitchenTickets,
   tableSessionItems,
   tableSessions,
 } from "@/db/schema";
@@ -16,10 +17,28 @@ export type AdminTableSessionItem = {
   productName: string;
   unitPriceInKurus: number;
   quantity: number;
+  kitchenSentQuantity: number;
   lineTotalInKurus: number;
   note: string | null;
   source: string;
   orderId: number | null;
+  createdAt: string;
+};
+
+export type AdminKitchenTicketItem = {
+  productName: string;
+  quantity: number;
+  note: string | null;
+};
+
+export type AdminTableKitchenTicket = {
+  id: number;
+  tableId: number;
+  sessionId: number;
+  ticketNumber: number;
+  actorName: string;
+  note: string | null;
+  items: AdminKitchenTicketItem[];
   createdAt: string;
 };
 
@@ -37,6 +56,7 @@ export type AdminTableSession = {
   openedAt: string;
   closedAt: string | null;
   items: AdminTableSessionItem[];
+  kitchenTickets: AdminTableKitchenTicket[];
   subtotalInKurus: number;
 };
 
@@ -142,6 +162,48 @@ const defaultTablesSeed = [
 
 let defaultTablesEnsured = false;
 let ensureTablesInFlight: Promise<void> | null = null;
+let kitchenSchemaEnsured = false;
+let kitchenSchemaInFlight: Promise<void> | null = null;
+
+export async function ensureKitchenSchemaReady() {
+  if (kitchenSchemaEnsured) return;
+  if (kitchenSchemaInFlight) return kitchenSchemaInFlight;
+
+  kitchenSchemaInFlight = (async () => {
+    const db = getDb();
+    await db.execute(sql`
+      alter table table_session_items
+      add column if not exists kitchen_sent_quantity integer not null default 0
+    `);
+    await db.execute(sql`
+      create table if not exists table_kitchen_tickets (
+        id serial primary key,
+        table_id integer not null references cafe_tables(id) on delete cascade,
+        session_id integer not null references table_sessions(id) on delete cascade,
+        ticket_number integer not null default 1,
+        actor_name varchar(120) not null default 'Kasa',
+        note text,
+        items_json text not null,
+        created_at timestamptz not null default now()
+      )
+    `);
+    await db.execute(sql`
+      create index if not exists table_kitchen_tickets_session_idx
+      on table_kitchen_tickets (session_id, id)
+    `);
+    await db.execute(sql`
+      create index if not exists table_kitchen_tickets_table_idx
+      on table_kitchen_tickets (table_id, created_at)
+    `);
+    kitchenSchemaEnsured = true;
+  })();
+
+  try {
+    await kitchenSchemaInFlight;
+  } finally {
+    kitchenSchemaInFlight = null;
+  }
+}
 
 export async function ensureDefaultCafeTables() {
   if (defaultTablesEnsured) return;
@@ -218,7 +280,7 @@ function normalizeTableMatch(value: string | null | undefined): string {
 
 export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
   const db = getDb();
-  await ensureDefaultCafeTables();
+  await Promise.all([ensureDefaultCafeTables(), ensureKitchenSchemaReady()]);
 
   const tableRows = await db
     .select()
@@ -252,6 +314,46 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
         .orderBy(asc(tableSessionItems.createdAt), asc(tableSessionItems.id))
     : [];
 
+  const kitchenTicketRows = allSessionIds.length
+    ? await db
+        .select()
+        .from(tableKitchenTickets)
+        .where(inArray(tableKitchenTickets.sessionId, allSessionIds))
+        .orderBy(desc(tableKitchenTickets.id))
+    : [];
+
+  const ticketsBySession = new Map<number, AdminTableKitchenTicket[]>();
+  for (const row of kitchenTicketRows) {
+    let parsedItems: AdminKitchenTicketItem[] = [];
+    try {
+      const raw = JSON.parse(row.itemsJson) as unknown;
+      if (Array.isArray(raw)) {
+        parsedItems = raw.map((it) => {
+          const item = (it ?? {}) as Record<string, unknown>;
+          return {
+            productName: String(item.productName ?? ""),
+            quantity: Math.max(1, Number(item.quantity ?? 1) || 1),
+            note: item.note ? String(item.note) : null,
+          };
+        });
+      }
+    } catch {
+      parsedItems = [];
+    }
+    const list = ticketsBySession.get(row.sessionId) ?? [];
+    list.push({
+      id: row.id,
+      tableId: row.tableId,
+      sessionId: row.sessionId,
+      ticketNumber: row.ticketNumber,
+      actorName: row.actorName,
+      note: row.note ?? null,
+      items: parsedItems,
+      createdAt: row.createdAt.toISOString(),
+    });
+    ticketsBySession.set(row.sessionId, list);
+  }
+
   const itemsBySession = new Map<number, AdminTableSessionItem[]>();
   for (const row of sessionItemRows) {
     const list = itemsBySession.get(row.sessionId) ?? [];
@@ -262,6 +364,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
       productName: row.productName,
       unitPriceInKurus: row.unitPriceInKurus,
       quantity: row.quantity,
+      kitchenSentQuantity: Math.min(row.quantity, Math.max(0, row.kitchenSentQuantity ?? 0)),
       lineTotalInKurus: row.unitPriceInKurus * row.quantity,
       note: row.note,
       source: row.source,
@@ -273,6 +376,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
 
   function mapSession(row: typeof tableSessions.$inferSelect): AdminTableSession {
     const items = itemsBySession.get(row.id) ?? [];
+    const kitchenTickets = ticketsBySession.get(row.id) ?? [];
     const subtotalInKurus = items.reduce((sum, item) => sum + item.lineTotalInKurus, 0);
     return {
       id: row.id,
@@ -288,6 +392,7 @@ export async function getAdminTablesSnapshot(): Promise<AdminTablesSnapshot> {
       openedAt: row.openedAt.toISOString(),
       closedAt: row.closedAt ? row.closedAt.toISOString() : null,
       items,
+      kitchenTickets,
       subtotalInKurus,
     };
   }

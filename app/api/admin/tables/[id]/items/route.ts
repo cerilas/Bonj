@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { cafeTables, menuItems, tableSessionItems, tableSessions } from "@/db/schema";
+import { ensureKitchenSchemaReady } from "@/lib/admin-tables";
 import { getTableOperator, logTableActivity, staffRoleLabel } from "@/lib/staff-auth";
 
 export async function POST(
@@ -30,6 +31,7 @@ export async function POST(
   const quantity = Math.max(1, Math.min(99, Number(body.quantity ?? 1) || 1));
   const note = String(body.note ?? "").trim().slice(0, 180) || null;
 
+  await ensureKitchenSchemaReady();
   const db = getDb();
 
   const [table] = await db
@@ -137,12 +139,13 @@ export async function POST(
     })
     .returning();
 
+  const noteTag = note ? ` [Not: ${note}]` : "";
   await logTableActivity({
     tableId,
     sessionId: session.id,
     operator,
     action: "add_item",
-    summary: `${staffRoleLabel(operator.actorRole)} ${operator.actorName} ${quantity}× ${resolvedName} ekledi.`,
+    summary: `${staffRoleLabel(operator.actorRole)} ${operator.actorName} ${quantity}× ${resolvedName} ekledi.${noteTag}`,
   });
 
   return NextResponse.json({ ok: true, item: inserted, sessionId: session.id }, { status: 201 });

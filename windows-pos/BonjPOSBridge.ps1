@@ -473,8 +473,8 @@ function Invoke-EscPosTcpPrint {
         }
     }
 
-    # Feed 4 lines cleanly then partial auto-cut
-    $buf.AddRange([byte[]]@(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x03))
+    # Feed ~3.6cm (10 lines) cleanly then partial auto-cut
+    $buf.AddRange([byte[]]@(0x1B, 0x64, 0x0A, 0x1D, 0x56, 0x42, 0x03))
 
     $payload = $buf.ToArray()
     $client = New-Object System.Net.Sockets.TcpClient
@@ -785,8 +785,8 @@ function Invoke-ThermalPrint {
     $widthHundredths = if ($PaperWidthMm -eq 58) { 192 } else { 280 }
     $marginL = 4
     $marginR = 4
-    $marginT = 2
-    $marginB = 8
+    $marginT = 1
+    $marginB = 12
     $contentW = [float]($widthHundredths - $marginL - $marginR)
 
     $doc = New-Object System.Drawing.Printing.PrintDocument
@@ -838,8 +838,8 @@ function Invoke-ThermalPrint {
     $measureG.Dispose()
     $measureBmp.Dispose()
 
-    $exactHeight = [int][Math]::Ceiling($measureY + 42)
-    $paperSize = New-Object System.Drawing.Printing.PaperSize("BonjThermal", $widthHundredths, [Math]::Max(220, $exactHeight))
+    $exactHeight = [int][Math]::Ceiling($measureY + 150)
+    $paperSize = New-Object System.Drawing.Printing.PaperSize("BonjThermal", $widthHundredths, [Math]::Max(340, $exactHeight))
     $doc.DefaultPageSettings.PaperSize = $paperSize
     $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins($marginL, $marginR, $marginT, $marginB)
     $doc.OriginAtMargins = $false
@@ -883,8 +883,8 @@ function Invoke-ThermalPrint {
             }
         }
 
-        # Tiny feed anchor so thermal drivers that trim trailing whitespace feed past the footer before auto-cut
-        $feedRect = New-Object System.Drawing.RectangleF($x, ($y + 18), $w, 12)
+        # Anchor >=3.2cm (125 hundredths) below footer so thermal cutters never clip bottom content
+        $feedRect = New-Object System.Drawing.RectangleF($x, ($y + 125), $w, 12)
         $g.DrawString(".", $fontBody, $brush, $feedRect, $fmtCenter)
 
         $ev.HasMorePages = $false
@@ -921,6 +921,9 @@ function Build-ReceiptLines {
         $lines += $sep
         foreach ($item in $Payload.items) {
             $lines += ("BOLD:{0}x {1}" -f $item.quantity, $item.productName)
+            if ($item.note) {
+                $lines += ("   >> NOT: {0}" -f $item.note)
+            }
         }
         if ($Payload.note) {
             $lines += $sep
