@@ -35,6 +35,11 @@ if (-not (Test-Path $profileDir)) {
     New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
 }
 
+$pauseFile = Join-Path $scriptDir "watchdog.paused"
+if (Test-Path $pauseFile) {
+    Remove-Item -Path $pauseFile -Force -ErrorAction SilentlyContinue
+}
+
 Write-Log "=== Bonj POS Baslatiliyor ==="
 
 if (-not $SkipDelay -and $startupDelay -gt 0) {
@@ -155,6 +160,18 @@ public static class BonjWin32 {
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll")]
+    public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
+    [DllImport("user32.dll")]
     public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     public const int SW_RESTORE = 9;
@@ -181,22 +198,12 @@ public static class BonjWin32 {
     }
 
     public static void ForceFocus(IntPtr hWnd) {
-        IntPtr fg = GetForegroundWindow();
-        uint pid;
-        uint fgThread = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out pid) : 0;
-        uint curThread = GetCurrentThreadId();
-
-        keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-
-        if (fgThread != 0 && fgThread != curThread) {
-            AttachThreadInput(curThread, fgThread, true);
+        if (IsIconic(hWnd)) {
+            ShowWindow(hWnd, SW_RESTORE);
         }
-        ShowWindow(hWnd, SW_RESTORE);
+        SwitchToThisWindow(hWnd, true);
+        BringWindowToTop(hWnd);
         SetForegroundWindow(hWnd);
-        if (fgThread != 0 && fgThread != curThread) {
-            AttachThreadInput(curThread, fgThread, false);
-        }
     }
 
     public static void SendF11() {
@@ -204,12 +211,20 @@ public static class BonjWin32 {
         keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
-    public static bool IsBoundsFullscreen(IntPtr hWnd, int targetWidth, int targetHeight) {
-        RECT r;
-        if (!GetWindowRect(hWnd, out r)) return false;
-        int w = r.Right - r.Left;
-        int h = r.Bottom - r.Top;
-        return Math.Abs(w - targetWidth) <= 6 && Math.Abs(h - targetHeight) <= 6;
+    public static bool IsTrueFullscreen(IntPtr hWnd, int targetX, int targetY, int targetWidth, int targetHeight) {
+        if (IsIconic(hWnd)) return false;
+        RECT wr;
+        if (!GetWindowRect(hWnd, out wr)) return false;
+        RECT cr;
+        if (!GetClientRect(hWnd, out cr)) return false;
+        int ww = wr.Right - wr.Left;
+        int wh = wr.Bottom - wr.Top;
+        int cw = cr.Right - cr.Left;
+        int ch = cr.Bottom - cr.Top;
+        bool onTargetMonitor = Math.Abs(wr.Left - targetX) <= 12 && Math.Abs(wr.Top - targetY) <= 12;
+        bool matchesOuter = Math.Abs(ww - targetWidth) <= 8 && Math.Abs(wh - targetHeight) <= 8;
+        bool matchesClient = cw >= (targetWidth - 10) && ch >= (targetHeight - 10);
+        return onTargetMonitor && matchesOuter && matchesClient;
     }
 }
 "@
@@ -282,13 +297,21 @@ function Launch-And-Place-Window {
     $by = $Screen.Bounds.Y
     $bw = $Screen.Bounds.Width
     $bh = $Screen.Bounds.Height
+    $ix = $bx + 30
+    $iy = $by + 30
+    $iw = [Math]::Max(800, $bw - 60)
+    $ih = [Math]::Max(600, $bh - 60)
 
     $args = @(
         "--user-data-dir=`"$profileDir`"",
         "--app=`"$Url`"",
         "--new-window",
-        "--window-position=$bx,$by",
-        "--window-size=$bw,$bh",
+        "--window-position=$ix,$iy",
+        "--window-size=$iw,$ih",
+        "--touch-events=enabled",
+        "--disable-pinch",
+        "--overscroll-history-navigation=0",
+        "--disable-features=TouchpadOverscrollHistoryNavigation",
         "--autoplay-policy=no-user-gesture-required",
         "--no-first-run",
         "--no-default-browser-check",
@@ -318,20 +341,32 @@ function Launch-And-Place-Window {
         return [IntPtr]::Zero
     }
 
-    Start-Sleep -Milliseconds 450
+    Start-Sleep -Milliseconds 500
     [BonjWin32]::ForceFocus($newHwnd)
     Start-Sleep -Milliseconds 150
-    [void][BonjWin32]::MoveWindow($newHwnd, $bx, $by, $bw, $bh, $true)
+    [void][BonjWin32]::MoveWindow($newHwnd, $ix, $iy, $iw, $ih, $true)
     Start-Sleep -Milliseconds 250
 
-    if (-not [BonjWin32]::IsBoundsFullscreen($newHwnd, $bw, $bh)) {
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
+        if ([BonjWin32]::IsTrueFullscreen($newHwnd, $bx, $by, $bw, $bh)) {
+            break
+        }
         [BonjWin32]::ForceFocus($newHwnd)
+        Start-Sleep -Milliseconds 150
+        [void][BonjWin32]::MoveWindow($newHwnd, $ix, $iy, $iw, $ih, $true)
         Start-Sleep -Milliseconds 120
         [BonjWin32]::SendF11()
-        Start-Sleep -Milliseconds 350
+
+        for ($poll = 0; $poll -lt 6; $poll++) {
+            Start-Sleep -Milliseconds 150
+            if ([BonjWin32]::IsTrueFullscreen($newHwnd, $bx, $by, $bw, $bh)) {
+                break
+            }
+        }
     }
 
-    Write-Log "$Label yerlestirildi ve tam ekran yapildi (HWND: $newHwnd)."
+    $isFs = [BonjWin32]::IsTrueFullscreen($newHwnd, $bx, $by, $bw, $bh)
+    Write-Log "$Label yerlestirildi (Tam Ekran: $isFs, HWND: $newHwnd)."
     return $newHwnd
 }
 

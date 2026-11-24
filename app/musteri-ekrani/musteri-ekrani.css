@@ -156,6 +156,10 @@ html[data-theme="dark"] .cd-idle-logo {
   }
 }
 
+body:has(.cd-screen) .theme-toggle {
+  display: none;
+}
+
 .cd-eyebrow {
   display: block;
   font-size: 10px;

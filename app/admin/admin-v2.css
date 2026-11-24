@@ -2446,7 +2446,7 @@
 }
 
 @media print {
-  @page { margin: 6mm; }
+  @page { margin: 2mm 3mm 6mm; }
 
   html,
   body {
@@ -2464,10 +2464,11 @@
 
   .admin-dashboard > * { display: none !important; }
   .admin-dashboard > .admin-order-print {
-    width: 80mm;
+    width: 70mm;
     max-width: 100%;
     display: block !important;
     margin: 0 auto;
+    padding-bottom: 6mm;
     background: #fff !important;
     color: #000 !important;
     font-family: Arial, sans-serif;
@@ -2477,48 +2478,48 @@
     display: flex;
     align-items: end;
     justify-content: space-between;
-    gap: 10mm;
-    border-bottom: 2px solid #000;
-    padding-bottom: 4mm;
+    gap: 6mm;
+    border-bottom: 1.5px solid #000;
+    padding-bottom: 2.5mm;
   }
 
   .admin-order-print > header > div { display: block; }
-  .admin-print-logo { width: 32mm; height: auto; filter: none !important; }
-  .admin-order-print > header p { margin: 0; font-size: 2.4mm; font-weight: 800; letter-spacing: 0.12em; white-space: nowrap; }
+  .admin-print-logo { width: 26mm; height: auto; filter: none !important; }
+  .admin-order-print > header p { margin: 0; font-size: 2.3mm; font-weight: 800; letter-spacing: 0.1em; white-space: nowrap; }
 
   .admin-order-print-code {
     display: grid;
-    gap: 2mm;
+    gap: 1.5mm;
     border-bottom: 1px dashed #777;
-    padding: 5mm 0;
+    padding: 3mm 0;
   }
-  .admin-order-print-code > span { font-size: 2.2mm; font-weight: 800; text-transform: uppercase; }
-  .admin-order-print-code > strong { font-family: Georgia, serif; font-size: 6mm; font-weight: 400; }
-  .admin-order-print-code > time { font-size: 2.4mm; }
+  .admin-order-print-code > span { font-size: 2.1mm; font-weight: 800; text-transform: uppercase; }
+  .admin-order-print-code > strong { font-family: Georgia, serif; font-size: 5.2mm; font-weight: 400; }
+  .admin-order-print-code > time { font-size: 2.3mm; }
 
-  .admin-order-print dl { display: grid; gap: 2.5mm; margin: 5mm 0; }
-  .admin-order-print dl > div { display: grid; grid-template-columns: 20mm minmax(0, 1fr); gap: 3mm; }
-  .admin-order-print dt { font-size: 2.2mm; font-weight: 800; text-transform: uppercase; }
-  .admin-order-print dd { margin: 0; font-size: 2.8mm; font-weight: 600; text-align: right; }
+  .admin-order-print dl { display: grid; gap: 1.8mm; margin: 3mm 0; }
+  .admin-order-print dl > div { display: grid; grid-template-columns: 18mm minmax(0, 1fr); gap: 2mm; }
+  .admin-order-print dt { font-size: 2.1mm; font-weight: 800; text-transform: uppercase; }
+  .admin-order-print dd { margin: 0; font-size: 2.6mm; font-weight: 600; text-align: right; }
 
-  .admin-order-print table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
-  .admin-order-print th { font-size: 2.1mm; letter-spacing: 0.06em; text-align: left; text-transform: uppercase; }
+  .admin-order-print table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+  .admin-order-print th { font-size: 2mm; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
   .admin-order-print th:last-child,
   .admin-order-print td:last-child { text-align: right; }
   .admin-order-print th:first-child,
-  .admin-order-print td:first-child { width: 11mm; }
-  .admin-order-print thead th { border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 3mm 1mm; }
-  .admin-order-print tbody td { border-bottom: 1px dashed #aaa; padding: 3.4mm 1mm; font-size: 2.8mm; vertical-align: top; }
+  .admin-order-print td:first-child { width: 9mm; }
+  .admin-order-print thead th { border-top: 1.5px solid #000; border-bottom: 1px solid #000; padding: 2.2mm 1mm; }
+  .admin-order-print tbody td { border-bottom: 1px dashed #aaa; padding: 2.4mm 1mm; font-size: 2.6mm; vertical-align: top; }
   .admin-order-print tbody td:nth-child(2) { font-weight: 700; }
-  .admin-order-print tbody small { display: block; margin-top: 1mm; font-size: 2mm; font-weight: 400; }
+  .admin-order-print tbody small { display: block; margin-top: 0.8mm; font-size: 1.9mm; font-weight: 400; }
   .admin-order-print tfoot th,
-  .admin-order-print tfoot td { border-bottom: 2px solid #000; padding: 4mm 1mm; font-size: 4mm; }
+  .admin-order-print tfoot td { border-bottom: 1.5px solid #000; padding: 2.8mm 1mm; font-size: 3.6mm; }
 
-  .admin-order-print-note { margin-top: 5mm; border: 2px solid #000; padding: 3.5mm; }
-  .admin-order-print-note span { font-size: 2.1mm; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-  .admin-order-print-note p { margin: 2mm 0 0; font-size: 3mm; font-weight: 700; line-height: 1.5; white-space: pre-wrap; }
+  .admin-order-print-note { margin-top: 3mm; border: 1.5px solid #000; padding: 2.5mm; }
+  .admin-order-print-note span { font-size: 2mm; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .admin-order-print-note p { margin: 1.5mm 0 0; font-size: 2.8mm; font-weight: 700; line-height: 1.4; white-space: pre-wrap; }
 
-  .admin-order-print > footer { display: flex; justify-content: space-between; gap: 5mm; margin-top: 6mm; font-size: 2mm; }
+  .admin-order-print > footer { display: flex; justify-content: space-between; gap: 4mm; margin-top: 4mm; padding-bottom: 4mm; font-size: 2mm; }
   .admin-order-print > footer small { font-size: inherit; }
 }
 
@@ -5620,5 +5621,603 @@ html[data-theme="dark"] .bonj-auth-logo {
   .admin-hw-status-grid,
   .admin-hw-form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Native Adisyon POS Terminal & Windows Touchscreen Layer
+   ========================================================= */
+
+.admin-dashboard button,
+.admin-dashboard a,
+.admin-pos-wrap,
+.admin-pos-table-card,
+.admin-pos-product-tile,
+.admin-pos-bill-item {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
+}
+
+.admin-dashboard input,
+.admin-dashboard textarea,
+.admin-dashboard select,
+.admin-dashboard pre,
+.admin-dashboard code {
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+}
+
+.admin-pos-wrap button:active,
+.admin-pos-table-card:active,
+.admin-pos-product-tile:active {
+  transform: scale(0.97);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .admin-pos-table-card:hover,
+  .admin-sidebar nav a:hover,
+  .admin-sidebar nav button:hover,
+  .admin-order-row:hover,
+  .admin-add-button:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 1120px) and (min-width: 721px) {
+  .admin-dashboard:has(#tables) {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
+  .admin-dashboard:has(#tables) .admin-sidebar {
+    width: 78px;
+    align-items: center;
+    padding-inline: 10px;
+  }
+  .admin-dashboard:has(#tables) .admin-brand span,
+  .admin-dashboard:has(#tables) .admin-sidebar nav a span,
+  .admin-dashboard:has(#tables) .admin-sidebar nav button span,
+  .admin-dashboard:has(#tables) .admin-account > div,
+  .admin-dashboard:has(#tables) .admin-account > button {
+    display: none;
+  }
+  .admin-dashboard:has(#tables) .admin-sidebar nav a,
+  .admin-dashboard:has(#tables) .admin-sidebar nav button {
+    justify-content: center;
+    padding: 12px;
+  }
+  .admin-dashboard:has(#tables) .admin-account {
+    grid-template-columns: 34px;
+    justify-content: center;
+  }
+}
+
+#tables .admin-topbar {
+  min-height: 0;
+  padding: 0;
+}
+
+#tables:has(.admin-pos-wrap.is-terminal-open) .admin-topbar {
+  display: none;
+}
+
+#tables .admin-pos-zones button,
+#tables .admin-pos-toolbar-actions button {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+#tables .admin-pos-grid {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+#tables .admin-pos-table-card {
+  min-height: 118px;
+  border-width: 1.5px;
+}
+
+.admin-pos-terminal {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.admin-pos-terminal-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+}
+
+.admin-pos-terminal-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-pos-back-btn {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 11px;
+  border: 1.5px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-pos-terminal-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-pos-terminal-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-pos-state-pill,
+.admin-pos-time-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-pos-state-pill.is-open {
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-pos-state-pill.is-free {
+  background: var(--admin-line);
+  color: var(--admin-muted);
+}
+
+.admin-pos-time-pill {
+  background: rgba(169, 25, 64, 0.14);
+  color: var(--admin-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-pos-terminal-title h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--admin-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-pos-terminal-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-pos-tool-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-pos-tool-btn.is-active {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-pos-terminal-actions .admin-pos-guest-stepper button {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  font-size: 18px;
+}
+
+.admin-pos-terminal-actions .admin-pos-guest-stepper strong {
+  min-width: 24px;
+  font-size: 15px;
+}
+
+.admin-pos-terminal-actions .admin-pos-delete-table-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.admin-pos-tools-bar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+}
+
+.admin-pos-mobile-tabs {
+  display: none;
+}
+
+.admin-pos-terminal-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(390px, 1fr);
+  gap: 12px;
+  overflow: hidden;
+}
+
+.admin-pos-menu-pane,
+.admin-pos-ticket-pane {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+  overflow: hidden;
+}
+
+.admin-pos-cat-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  touch-action: pan-x;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.admin-pos-cat-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-pos-cat-tabs button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-pos-cat-tabs button.is-current {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-pos-menu-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-pos-menu-controls .admin-pos-quick-qty button,
+.admin-pos-menu-controls .admin-pos-quick-qty input {
+  min-width: 44px;
+  height: 42px;
+  font-size: 14px;
+  border-radius: 9px;
+}
+
+.admin-pos-menu-search-group {
+  flex: 1 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-pos-menu-search-group input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 14px;
+}
+
+.admin-pos-menu-search-group button {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-pos-menu-search-group button.is-active {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-pos-product-grid {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(154px, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.admin-pos-product-tile {
+  min-height: 88px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 5px;
+  cursor: pointer;
+  transition: border-color 0.14s ease, transform 0.1s ease;
+}
+
+.admin-pos-product-tile:hover {
+  border-color: var(--admin-accent);
+}
+
+.admin-pos-product-tile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-pos-product-tile small {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-pos-product-tile span {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--admin-ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.admin-pos-product-tile strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--admin-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-pos-ticket-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.admin-pos-ticket-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.admin-pos-ticket-head span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-ink);
+}
+
+.admin-pos-ticket-empty-state {
+  flex: 1 1 0%;
+  display: grid;
+  align-content: center;
+  padding: 12px 4px;
+}
+
+.admin-pos-ticket-items {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 4px;
+}
+
+.admin-pos-ticket-items .admin-pos-qty button {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
+.admin-pos-ticket-items .admin-pos-qty span {
+  min-width: 28px;
+  font-size: 16px;
+}
+
+.admin-pos-settlement {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--admin-line-strong);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-pos-settlement .admin-pos-payable {
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.admin-pos-settlement .admin-pos-payable > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-pos-settlement .admin-pos-payable small {
+  font-size: 11px;
+  color: var(--admin-muted);
+}
+
+.admin-pos-settlement .admin-pos-payable strong {
+  font-size: 25px;
+  font-weight: 900;
+  color: var(--admin-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-pos-quick-cash {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 6px;
+}
+
+.admin-pos-quick-cash button {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-pos-quick-cash button.is-clear {
+  border-color: rgba(225, 29, 72, 0.45);
+  color: #e11d48;
+}
+
+.admin-pos-settlement .admin-pos-close-actions button {
+  min-height: 54px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 960px) {
+  .admin-pos-tools-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-pos-mobile-tabs {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .admin-pos-mobile-tabs button {
+    min-height: 46px;
+    border-radius: 11px;
+    border: 1px solid var(--admin-line-strong);
+    background: var(--admin-panel);
+    color: var(--admin-ink);
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .admin-pos-mobile-tabs button.is-current {
+    border-color: var(--admin-accent);
+    background: var(--admin-accent);
+    color: #fff;
+  }
+
+  .admin-pos-terminal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-pos-terminal-body.tab-menu .admin-pos-ticket-pane {
+    display: none;
+  }
+
+  .admin-pos-terminal-body.tab-ticket .admin-pos-menu-pane {
+    display: none;
+  }
+
+  .admin-pos-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

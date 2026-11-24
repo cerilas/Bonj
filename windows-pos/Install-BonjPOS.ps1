@@ -19,7 +19,7 @@ try {
 } catch {}
 
 # Copy launcher & bridge scripts (preserve existing config.json if customized)
-$files = @("BonjPOS.ps1", "BonjPOSBridge.ps1", "bonj-logo.png", "Start-BonjPOS.bat", "Swap-Screens.bat", "Uninstall-BonjPOS.bat", "README.md")
+$files = @("BonjPOS.ps1", "BonjPOSBridge.ps1", "bonj-logo.png", "Start-BonjPOS.bat", "Stop-BonjPOS.bat", "Swap-Screens.bat", "Uninstall-BonjPOS.bat", "README.md")
 foreach ($f in $files) {
     $src = Join-Path $sourceDir $f
     if (Test-Path $src) {

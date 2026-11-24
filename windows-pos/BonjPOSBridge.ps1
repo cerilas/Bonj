@@ -78,6 +78,18 @@ public static class BonjBridgeWin32 {
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll")]
+    public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
+    [DllImport("user32.dll")]
     public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     public const int SW_RESTORE = 9;
@@ -106,22 +118,12 @@ public static class BonjBridgeWin32 {
     }
 
     public static void ForceFocus(IntPtr hWnd) {
-        IntPtr fg = GetForegroundWindow();
-        uint pid;
-        uint fgThread = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out pid) : 0;
-        uint curThread = GetCurrentThreadId();
-
-        keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
-        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-
-        if (fgThread != 0 && fgThread != curThread) {
-            AttachThreadInput(curThread, fgThread, true);
+        if (IsIconic(hWnd)) {
+            ShowWindow(hWnd, SW_RESTORE);
         }
-        ShowWindow(hWnd, SW_RESTORE);
+        SwitchToThisWindow(hWnd, true);
+        BringWindowToTop(hWnd);
         SetForegroundWindow(hWnd);
-        if (fgThread != 0 && fgThread != curThread) {
-            AttachThreadInput(curThread, fgThread, false);
-        }
     }
 
     public static void SendF11() {
@@ -129,12 +131,34 @@ public static class BonjBridgeWin32 {
         keybd_event(VK_F11, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
-    public static bool IsBoundsFullscreen(IntPtr hWnd, int targetWidth, int targetHeight) {
-        RECT r;
-        if (!GetWindowRect(hWnd, out r)) return false;
-        int w = r.Right - r.Left;
-        int h = r.Bottom - r.Top;
-        return Math.Abs(w - targetWidth) <= 6 && Math.Abs(h - targetHeight) <= 6;
+    public static bool IsTrueFullscreen(IntPtr hWnd, int targetX, int targetY, int targetWidth, int targetHeight) {
+        if (IsIconic(hWnd)) return false;
+        RECT wr;
+        if (!GetWindowRect(hWnd, out wr)) return false;
+        RECT cr;
+        if (!GetClientRect(hWnd, out cr)) return false;
+        int ww = wr.Right - wr.Left;
+        int wh = wr.Bottom - wr.Top;
+        int cw = cr.Right - cr.Left;
+        int ch = cr.Bottom - cr.Top;
+        bool onTargetMonitor = Math.Abs(wr.Left - targetX) <= 12 && Math.Abs(wr.Top - targetY) <= 12;
+        bool matchesOuter = Math.Abs(ww - targetWidth) <= 8 && Math.Abs(wh - targetHeight) <= 8;
+        bool matchesClient = cw >= (targetWidth - 10) && ch >= (targetHeight - 10);
+        return onTargetMonitor && matchesOuter && matchesClient;
+    }
+
+    public static bool NeedsExitFullscreenForMove(IntPtr hWnd, int targetX, int targetY) {
+        RECT wr;
+        if (!GetWindowRect(hWnd, out wr)) return false;
+        RECT cr;
+        if (!GetClientRect(hWnd, out cr)) return false;
+        bool onTarget = Math.Abs(wr.Left - targetX) <= 12 && Math.Abs(wr.Top - targetY) <= 12;
+        if (onTarget) return false;
+        int ww = wr.Right - wr.Left;
+        int wh = wr.Bottom - wr.Top;
+        int cw = cr.Right - cr.Left;
+        int ch = cr.Bottom - cr.Top;
+        return Math.Abs(ww - cw) <= 6 && Math.Abs(wh - ch) <= 6;
     }
 }
 "@
@@ -257,7 +281,151 @@ function Get-PrintersList {
     return ,$result
 }
 
+$script:bridgeStartTime = Get-Date
+$script:lastWatchdogRun = Get-Date
+$script:lastCustomerLaunchAt = [DateTime]::MinValue
+$script:lastCashierLaunchAt = [DateTime]::MinValue
+
+function Find-ChromePath {
+    $candidates = @(
+        (Join-Path $env:ProgramFiles "Google\Chrome\Application\chrome.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "Google\Chrome\Application\chrome.exe"),
+        (Join-Path $env:LocalAppData "Google\Chrome\Application\chrome.exe")
+    )
+    foreach ($p in $candidates) {
+        if ($p -and (Test-Path $p)) { return $p }
+    }
+    $cmd = Get-Command chrome.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
+}
+
+function Ensure-WindowFullscreen {
+    param(
+        [IntPtr]$Handle,
+        [System.Windows.Forms.Screen]$Screen,
+        [string]$Label
+    )
+
+    if ($Handle -eq [IntPtr]::Zero -or $null -eq $Screen) { return $false }
+
+    $bx = $Screen.Bounds.X
+    $by = $Screen.Bounds.Y
+    $bw = $Screen.Bounds.Width
+    $bh = $Screen.Bounds.Height
+
+    if ([BonjBridgeWin32]::IsTrueFullscreen($Handle, $bx, $by, $bw, $bh)) {
+        return $false
+    }
+
+    $ix = $bx + 30
+    $iy = $by + 30
+    $iw = [Math]::Max(800, $bw - 60)
+    $ih = [Math]::Max(600, $bh - 60)
+
+    if ([BonjBridgeWin32]::NeedsExitFullscreenForMove($Handle, $bx, $by)) {
+        [BonjBridgeWin32]::ForceFocus($Handle)
+        Start-Sleep -Milliseconds 120
+        [BonjBridgeWin32]::SendF11()
+        Start-Sleep -Milliseconds 300
+    }
+
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
+        if ([BonjBridgeWin32]::IsTrueFullscreen($Handle, $bx, $by, $bw, $bh)) {
+            break
+        }
+        [BonjBridgeWin32]::ForceFocus($Handle)
+        Start-Sleep -Milliseconds 120
+        [void][BonjBridgeWin32]::MoveWindow($Handle, $ix, $iy, $iw, $ih, $true)
+        Start-Sleep -Milliseconds 150
+        [BonjBridgeWin32]::SendF11()
+
+        for ($poll = 0; $poll -lt 6; $poll++) {
+            Start-Sleep -Milliseconds 150
+            if ([BonjBridgeWin32]::IsTrueFullscreen($Handle, $bx, $by, $bw, $bh)) {
+                break
+            }
+        }
+    }
+
+    $ok = [BonjBridgeWin32]::IsTrueFullscreen($Handle, $bx, $by, $bw, $bh)
+    Write-BridgeLog "$Label tam ekran zorlandi (Basarili: $ok)."
+    return $true
+}
+
+function Launch-PosChromeWindow {
+    param(
+        [string]$Url,
+        [System.Windows.Forms.Screen]$Screen,
+        [string]$ProfileDir,
+        [bool]$KioskPrinting,
+        [string]$Label
+    )
+
+    $chromePath = Find-ChromePath
+    if (-not $chromePath -or $null -eq $Screen) { return [IntPtr]::Zero }
+
+    $before = New-Object 'System.Collections.Generic.HashSet[IntPtr]'
+    foreach ($w in [BonjBridgeWin32]::GetChromeWindows()) {
+        [void]$before.Add($w.Handle)
+    }
+
+    $bx = $Screen.Bounds.X
+    $by = $Screen.Bounds.Y
+    $bw = $Screen.Bounds.Width
+    $bh = $Screen.Bounds.Height
+    $ix = $bx + 30
+    $iy = $by + 30
+    $iw = [Math]::Max(800, $bw - 60)
+    $ih = [Math]::Max(600, $bh - 60)
+
+    $args = @(
+        "--user-data-dir=`"$ProfileDir`"",
+        "--app=`"$Url`"",
+        "--new-window",
+        "--window-position=$ix,$iy",
+        "--window-size=$iw,$ih",
+        "--touch-events=enabled",
+        "--disable-pinch",
+        "--overscroll-history-navigation=0",
+        "--disable-features=TouchpadOverscrollHistoryNavigation",
+        "--autoplay-policy=no-user-gesture-required",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-session-crashed-bubble"
+    )
+    if ($KioskPrinting) { $args += "--kiosk-printing" }
+
+    Start-Process -FilePath $chromePath -ArgumentList ($args -join " ") | Out-Null
+
+    $newHwnd = [IntPtr]::Zero
+    $winDeadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $winDeadline) {
+        Start-Sleep -Milliseconds 250
+        foreach ($w in [BonjBridgeWin32]::GetChromeWindows()) {
+            if (-not $before.Contains($w.Handle)) {
+                $newHwnd = $w.Handle
+                break
+            }
+        }
+        if ($newHwnd -ne [IntPtr]::Zero) { break }
+    }
+
+    if ($newHwnd -eq [IntPtr]::Zero) {
+        Write-BridgeLog "UYARI: $Label yeniden acilamadi (pencere bulunamadi)."
+        return [IntPtr]::Zero
+    }
+
+    Start-Sleep -Milliseconds 450
+    [void](Ensure-WindowFullscreen -Handle $newHwnd -Screen $Screen -Label $Label)
+    return $newHwnd
+}
+
 function Apply-ScreenPlacement {
+    param(
+        [bool]$AllowReopen = $true
+    )
+
     $cfg = Get-ConfigObject
     $screens = [System.Windows.Forms.Screen]::AllScreens
     if ($screens.Count -eq 0) { return }
@@ -268,8 +436,16 @@ function Apply-ScreenPlacement {
     if ($mIdx -lt 0 -or $mIdx -ge $screens.Count) {
         $mIdx = if ($screens.Count -gt 1) { 1 } else { 0 }
     }
+    if ($screens.Count -ge 2 -and $mIdx -eq $cIdx) {
+        $mIdx = if ($cIdx -eq 0) { 1 } else { 0 }
+    }
 
-    $profileDir = [string]$cfg.profileDir
+    $profileDir = if ($cfg.profileDir) { [string]$cfg.profileDir } else { "C:\BonjPOS\ChromeProfile" }
+    $baseUrl = if ($cfg.baseUrl) { ([string]$cfg.baseUrl).TrimEnd("/") } else { "https://bonjcakestory.com" }
+    $adminPath = if ($cfg.adminPath) { [string]$cfg.adminPath } else { "/admin?view=tables" }
+    $customerPath = if ($cfg.customerPath) { [string]$cfg.customerPath } else { "/musteri-ekrani" }
+    $kioskPrinting = [bool]$cfg.kioskPrinting
+
     $escapedProfile = [Regex]::Escape($profileDir)
     $posPids = New-Object 'System.Collections.Generic.HashSet[uint32]'
     try {
@@ -280,11 +456,13 @@ function Apply-ScreenPlacement {
         }
     } catch {}
 
-    $allWins = [BonjBridgeWin32]::GetChromeWindows()
     $targetWins = @()
-    foreach ($w in $allWins) {
-        if ($posPids.Count -eq 0 -or $posPids.Contains($w.Pid)) {
-            $targetWins += $w
+    if ($posPids.Count -gt 0) {
+        $allWins = [BonjBridgeWin32]::GetChromeWindows()
+        foreach ($w in $allWins) {
+            if ($posPids.Contains($w.Pid)) {
+                $targetWins += $w
+            }
         }
     }
 
@@ -298,38 +476,47 @@ function Apply-ScreenPlacement {
         }
     }
 
+    $changed = $false
+    $cashierHandle = if ($cashierWin) { $cashierWin.Handle } else { [IntPtr]::Zero }
+
     if ($cashierWin) {
-        $sc = $screens[$cIdx]
-        $wasFs = [BonjBridgeWin32]::IsBoundsFullscreen($cashierWin.Handle, $sc.Bounds.Width, $sc.Bounds.Height)
-        if (-not $wasFs) {
-            [BonjBridgeWin32]::ForceFocus($cashierWin.Handle)
-            Start-Sleep -Milliseconds 120
-            [void][BonjBridgeWin32]::MoveWindow($cashierWin.Handle, $sc.Bounds.X, $sc.Bounds.Y, $sc.Bounds.Width, $sc.Bounds.Height, $true)
-            Start-Sleep -Milliseconds 200
-            if (-not [BonjBridgeWin32]::IsBoundsFullscreen($cashierWin.Handle, $sc.Bounds.Width, $sc.Bounds.Height)) {
-                [BonjBridgeWin32]::SendF11()
-                Start-Sleep -Milliseconds 250
+        if (Ensure-WindowFullscreen -Handle $cashierWin.Handle -Screen $screens[$cIdx] -Label "Admin POS") {
+            $changed = $true
+        }
+    } elseif ($AllowReopen) {
+        $now = Get-Date
+        if (($now - $script:lastCashierLaunchAt).TotalSeconds -ge 20) {
+            $script:lastCashierLaunchAt = $now
+            Write-BridgeLog "Watchdog: Admin POS penceresi kapali, yeniden aciliyor..."
+            $launched = Launch-PosChromeWindow -Url "$baseUrl$adminPath" -Screen $screens[$cIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Admin POS"
+            if ($launched -ne [IntPtr]::Zero) {
+                $cashierHandle = $launched
+                $changed = $true
             }
         }
     }
 
-    if ($customerWin -and $screens.Count -ge 2) {
-        $sm = $screens[$mIdx]
-        $wasFs2 = [BonjBridgeWin32]::IsBoundsFullscreen($customerWin.Handle, $sm.Bounds.Width, $sm.Bounds.Height)
-        if (-not $wasFs2) {
-            [BonjBridgeWin32]::ForceFocus($customerWin.Handle)
-            Start-Sleep -Milliseconds 120
-            [void][BonjBridgeWin32]::MoveWindow($customerWin.Handle, $sm.Bounds.X, $sm.Bounds.Y, $sm.Bounds.Width, $sm.Bounds.Height, $true)
-            Start-Sleep -Milliseconds 200
-            if (-not [BonjBridgeWin32]::IsBoundsFullscreen($customerWin.Handle, $sm.Bounds.Width, $sm.Bounds.Height)) {
-                [BonjBridgeWin32]::SendF11()
-                Start-Sleep -Milliseconds 250
+    if ($screens.Count -ge 2 -and $mIdx -ne $cIdx) {
+        if ($customerWin) {
+            if (Ensure-WindowFullscreen -Handle $customerWin.Handle -Screen $screens[$mIdx] -Label "Musteri Ekrani") {
+                $changed = $true
+            }
+        } elseif ($AllowReopen -and $targetWins.Count -lt 2) {
+            $now = Get-Date
+            if (($now - $script:lastCustomerLaunchAt).TotalSeconds -ge 15) {
+                $script:lastCustomerLaunchAt = $now
+                Write-BridgeLog "Watchdog: Musteri Ekrani kapali, 2. ekranda tam ekran aciliyor..."
+                $launchedCust = Launch-PosChromeWindow -Url "$baseUrl$customerPath" -Screen $screens[$mIdx] -ProfileDir $profileDir -KioskPrinting $kioskPrinting -Label "Musteri Ekrani"
+                if ($launchedCust -ne [IntPtr]::Zero) {
+                    $changed = $true
+                }
             }
         }
     }
 
-    if ($cashierWin) {
-        [BonjBridgeWin32]::ForceFocus($cashierWin.Handle)
+    if ($changed -and $cashierHandle -ne [IntPtr]::Zero) {
+        Start-Sleep -Milliseconds 150
+        [BonjBridgeWin32]::ForceFocus($cashierHandle)
     }
 }
 
@@ -361,9 +548,12 @@ function Invoke-ThermalPrint {
         }
     }
 
-    $widthHundredths = if ($PaperWidthMm -eq 58) { 225 } else { 310 }
-    $logoExtraHeight = if ($logoImg) { 90 } else { 36 }
-    $estimatedHeight = [Math]::Max(380, ($logoExtraHeight + 130 + ($Lines.Count * 26)))
+    $widthHundredths = if ($PaperWidthMm -eq 58) { 192 } else { 280 }
+    $marginL = 4
+    $marginR = 4
+    $marginT = 2
+    $marginB = 8
+    $contentW = [float]($widthHundredths - $marginL - $marginR)
 
     $doc = New-Object System.Drawing.Printing.PrintDocument
     $doc.PrinterSettings.PrinterName = $PrinterName
@@ -372,55 +562,97 @@ function Invoke-ThermalPrint {
         throw "Yazici Windows'ta bulunamadi veya gecersiz: $PrinterName"
     }
 
-    $paperSize = New-Object System.Drawing.Printing.PaperSize("BonjThermal", $widthHundredths, $estimatedHeight)
-    $doc.DefaultPageSettings.PaperSize = $paperSize
-    $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(8, 8, 10, 14)
+    $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
 
-    $fontTitle = New-Object System.Drawing.Font("Consolas", 11, [System.Drawing.FontStyle]::Bold)
+    $fontTitle = New-Object System.Drawing.Font("Consolas", 10.5, [System.Drawing.FontStyle]::Bold)
     $fontBody = New-Object System.Drawing.Font("Consolas", 8.5, [System.Drawing.FontStyle]::Regular)
     $fontBold = New-Object System.Drawing.Font("Consolas", 9, [System.Drawing.FontStyle]::Bold)
+
+    $fmtCenter = New-Object System.Drawing.StringFormat
+    $fmtCenter.Alignment = [System.Drawing.StringAlignment]::Center
+    $fmtLeft = New-Object System.Drawing.StringFormat
+
+    # Measure true height at 100 DPI (same 1/100 inch unit as PrintDocument)
+    $measureBmp = New-Object System.Drawing.Bitmap(1, 1)
+    $measureBmp.SetResolution(100, 100)
+    $measureG = [System.Drawing.Graphics]::FromImage($measureBmp)
+    $measureG.PageUnit = [System.Drawing.GraphicsUnit]::Display
+
+    $measureY = [float]$marginT
+    if ($logoImg) {
+        $drawW = [Math]::Min($contentW * 0.56, 138.0)
+        $drawH = $drawW * ($logoImg.Height / [double]$logoImg.Width)
+        $measureY += ([float]$drawH + 4)
+    } elseif ($TitleLine) {
+        $titleSize = $measureG.MeasureString($TitleLine, $fontTitle, [int]$contentW, $fmtCenter)
+        $measureY += ($titleSize.Height + 6)
+    }
+
+    foreach ($line in $Lines) {
+        if ($line -like "BOLD:*") {
+            $txt = $line.Substring(5)
+            $sz = $measureG.MeasureString($txt, $fontBold, [int]$contentW, $fmtLeft)
+            $h = [Math]::Max(17, ($sz.Height + 3))
+            $measureY += ($h + 2)
+        } else {
+            $sz = $measureG.MeasureString($line, $fontBody, [int]$contentW, $fmtLeft)
+            $h = [Math]::Max(14, ($sz.Height + 2))
+            $measureY += ($h + 2)
+        }
+    }
+
+    $measureG.Dispose()
+    $measureBmp.Dispose()
+
+    $exactHeight = [int][Math]::Ceiling($measureY + 42)
+    $paperSize = New-Object System.Drawing.Printing.PaperSize("BonjThermal", $widthHundredths, [Math]::Max(220, $exactHeight))
+    $doc.DefaultPageSettings.PaperSize = $paperSize
+    $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins($marginL, $marginR, $marginT, $marginB)
+    $doc.OriginAtMargins = $false
 
     $doc.add_PrintPage({
         param($sender, $ev)
         $g = $ev.Graphics
-        $x = [float]$ev.MarginBounds.Left
-        $y = [float]$ev.MarginBounds.Top
-        $w = [float]$ev.MarginBounds.Width
+        $x = [float]$marginL
+        $y = [float]$marginT
+        $w = [float]$contentW
         $brush = [System.Drawing.Brushes]::Black
-        $fmtCenter = New-Object System.Drawing.StringFormat
-        $fmtCenter.Alignment = [System.Drawing.StringAlignment]::Center
-        $fmtLeft = New-Object System.Drawing.StringFormat
 
         if ($logoImg) {
-            $drawW = [Math]::Min($w * 0.72, 165.0)
+            $drawW = [Math]::Min($w * 0.56, 138.0)
             $drawH = $drawW * ($logoImg.Height / [double]$logoImg.Width)
             $drawX = $x + (($w - $drawW) / 2.0)
             $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
             $g.DrawImage($logoImg, [float]$drawX, [float]$y, [float]$drawW, [float]$drawH)
-            $y += ([float]$drawH + 8)
+            $y += ([float]$drawH + 4)
         } elseif ($TitleLine) {
             $titleSize = $g.MeasureString($TitleLine, $fontTitle, [int]$w, $fmtCenter)
-            $rect = New-Object System.Drawing.RectangleF($x, $y, $w, ($titleSize.Height + 6))
+            $rect = New-Object System.Drawing.RectangleF($x, $y, $w, ($titleSize.Height + 4))
             $g.DrawString($TitleLine, $fontTitle, $brush, $rect, $fmtCenter)
-            $y += ($titleSize.Height + 8)
+            $y += ($titleSize.Height + 6)
         }
 
         foreach ($line in $Lines) {
             if ($line -like "BOLD:*") {
                 $txt = $line.Substring(5)
                 $sz = $g.MeasureString($txt, $fontBold, [int]$w, $fmtLeft)
-                $h = [Math]::Max(18, $sz.Height + 3)
+                $h = [Math]::Max(17, ($sz.Height + 3))
                 $rect = New-Object System.Drawing.RectangleF($x, $y, $w, $h)
                 $g.DrawString($txt, $fontBold, $brush, $rect, $fmtLeft)
                 $y += ($h + 2)
             } else {
                 $sz = $g.MeasureString($line, $fontBody, [int]$w, $fmtLeft)
-                $h = [Math]::Max(15, $sz.Height + 2)
+                $h = [Math]::Max(14, ($sz.Height + 2))
                 $rect = New-Object System.Drawing.RectangleF($x, $y, $w, $h)
                 $g.DrawString($line, $fontBody, $brush, $rect, $fmtLeft)
                 $y += ($h + 2)
             }
         }
+
+        # Tiny feed anchor so thermal drivers that trim trailing whitespace feed past the footer before auto-cut
+        $feedRect = New-Object System.Drawing.RectangleF($x, ($y + 18), $w, 12)
+        $g.DrawString(".", $fontBody, $brush, $feedRect, $fmtCenter)
+
         $ev.HasMorePages = $false
     })
 
@@ -428,6 +660,8 @@ function Invoke-ThermalPrint {
         $doc.Print()
     } finally {
         if ($logoImg) { $logoImg.Dispose() }
+        $fmtCenter.Dispose()
+        $fmtLeft.Dispose()
         $fontTitle.Dispose()
         $fontBody.Dispose()
         $fontBold.Dispose()
@@ -438,7 +672,7 @@ function Invoke-ThermalPrint {
 function Build-ReceiptLines {
     param($Payload, [int]$PaperWidthMm)
     $isKitchen = ($Payload.target -eq "kitchen")
-    $cols = if ($PaperWidthMm -eq 58) { 30 } else { 42 }
+    $cols = if ($PaperWidthMm -eq 58) { 26 } else { 38 }
     $sep = "-" * $cols
     $lines = @()
 
@@ -549,9 +783,31 @@ function Send-JsonResponse {
     $res.OutputStream.Close()
 }
 
+$asyncCtx = $null
 while ($listener.IsListening) {
     try {
-        $ctx = $listener.GetContext()
+        if ($null -eq $asyncCtx) {
+            $asyncCtx = $listener.BeginGetContext($null, $null)
+        }
+        $signaled = $asyncCtx.AsyncWaitHandle.WaitOne(3500)
+        if (-not $signaled) {
+            $now = Get-Date
+            $pauseFile = Join-Path $scriptDir "watchdog.paused"
+            if (-not (Test-Path $pauseFile)) {
+                if ((($now - $script:bridgeStartTime).TotalSeconds -ge 15) -and (($now - $script:lastWatchdogRun).TotalSeconds -ge 12)) {
+                    $script:lastWatchdogRun = $now
+                    try {
+                        Apply-ScreenPlacement -AllowReopen $true
+                    } catch {
+                        Write-BridgeLog "Watchdog hatasi: $($_.Exception.Message)"
+                    }
+                }
+            }
+            continue
+        }
+
+        $ctx = $listener.EndGetContext($asyncCtx)
+        $asyncCtx = $null
         $req = $ctx.Request
         $path = $req.Url.AbsolutePath.TrimEnd("/").ToLowerInvariant()
 

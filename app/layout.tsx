@@ -124,7 +124,7 @@ export default async function RootLayout({
     <html lang="tr" data-theme="light" suppressHydrationWarning>
       <head>
         <Script id="bonj-theme-init" strategy="beforeInteractive">
-          {"try { const theme = localStorage.getItem('bonj-theme'); if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme; } catch {}"}
+          {"try { var h = new Date().getHours(); var autoTheme = (h >= 6 && h < 19) ? 'light' : 'dark'; var period = autoTheme === 'light' ? 'day' : 'night'; var p = window.location.pathname || ''; var strictClock = p.indexOf('/musteri-ekrani') === 0; var manual = localStorage.getItem('bonj-theme'); var manualPeriod = localStorage.getItem('bonj-theme-manual-period'); if (!strictClock && (manual === 'dark' || manual === 'light') && manualPeriod === period) { document.documentElement.dataset.theme = manual; } else { document.documentElement.dataset.theme = autoTheme; } } catch {}"}
         </Script>
       </head>
       <body>

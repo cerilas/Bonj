@@ -177,7 +177,6 @@ export function CustomerDisplayExperience() {
             <BrandLogo className="cd-idle-logo" alt="bonj" />
             <span className="cd-eyebrow">GAZİANTEP · PASTANE &amp; KAHVE</span>
             <h1>
-              bonj’a<br />
               <em>hoş geldiniz.</em>
             </h1>
             <p>

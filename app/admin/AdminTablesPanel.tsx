@@ -138,6 +138,9 @@ export function AdminTablesPanel({
   const [addingLabel, setAddingLabel] = useState("");
   const [customItemName, setCustomItemName] = useState("");
   const [customItemPrice, setCustomItemPrice] = useState("");
+  const [showCustomItemForm, setShowCustomItemForm] = useState(false);
+  const [showTableTools, setShowTableTools] = useState(false);
+  const [mobilePosTab, setMobilePosTab] = useState<"menu" | "ticket">("menu");
 
   // Move table
   const [moveTargetId, setMoveTargetId] = useState("");
@@ -254,6 +257,13 @@ export function AdminTablesPanel({
     setSplitCashTl("");
     setSplitCardTl("");
   }, [selectedTable?.id, selectedTable?.activeSession?.id]);
+
+  function handleSelectTable(table: AdminCafeTable) {
+    setShowTableTools(false);
+    setShowCustomItemForm(false);
+    setMobilePosTab(table.activeSession ? "ticket" : "menu");
+    setSelectedTableId(table.id);
+  }
 
   const freeTablesForMove = useMemo(() => {
     if (!snapshot || !selectedTable) return [];
@@ -776,260 +786,362 @@ export function AdminTablesPanel({
     );
   }
 
+  function addQuickCashAmount(tlToAdd: number) {
+    const current = Math.max(0, Number(cashTenderedTl.replace(",", ".")) || 0);
+    const next = current + tlToAdd;
+    setCashTenderedTl(Number.isInteger(next) ? String(next) : next.toFixed(2));
+  }
+
+  const qrTotalKurus = selectedTable
+    ? selectedTable.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0)
+    : 0;
+
   return (
-    <section className="admin-pos-wrap">
-      {!staffMode ? (
-        <div className="admin-pos-summary">
-          <div className="admin-pos-kpi">
-            <span>Açık Masalar</span>
-            <strong>
-              {snapshot ? `${snapshot.summary.openTables} / ${snapshot.summary.totalTables}` : "—"}
-            </strong>
-          </div>
-          <div className="admin-pos-kpi">
-            <span>Açık Adisyon Toplamı</span>
-            <strong>{snapshot ? money(snapshot.summary.openTotalInKurus) : "—"}</strong>
-          </div>
-          <div className="admin-pos-kpi">
-            <span>Bugün Nakit</span>
-            <strong>{snapshot ? money(snapshot.summary.todayCashInKurus) : "—"}</strong>
-          </div>
-          <div className="admin-pos-kpi">
-            <span>Bugün Kart</span>
-            <strong>{snapshot ? money(snapshot.summary.todayCardInKurus) : "—"}</strong>
-          </div>
-          <div className="admin-pos-kpi">
-            <span>Kapanan Masa (Bugün)</span>
-            <strong>{snapshot ? snapshot.summary.todayClosedCount : "—"}</strong>
-          </div>
-        </div>
-      ) : (
-        <div className="admin-pos-staff-summary">
-          <div>
-            <span>Açık Masa</span>
-            <strong>{snapshot ? `${snapshot.summary.openTables} / ${snapshot.summary.totalTables}` : "—"}</strong>
-          </div>
-          <div>
-            <span>QR Siparişli</span>
-            <strong>{snapshot ? snapshot.tables.filter((t) => t.onlineOrders.length > 0).length : "—"}</strong>
-          </div>
-        </div>
-      )}
-
-      <div className="admin-pos-toolbar">
-        <div className="admin-pos-filters-group">
-          <div className="admin-pos-zones">
-            {zones.map((z) => (
-              <button
-                key={z}
-                type="button"
-                className={zoneFilter === z ? "is-current" : ""}
-                onClick={() => setZoneFilter(z)}
-              >
-                {z === "all"
-                  ? `Tüm Bölgeler (${snapshot?.summary.totalTables ?? 0})`
-                  : `${z} (${zoneCounts.get(z) ?? 0})`}
-              </button>
-            ))}
-          </div>
-          <div className="admin-pos-zones">
-            {(
-              [
-                ["all", "Hepsi"],
-                ["open", "Açık"],
-                ["free", "Boş"],
-                ["qr", "QR Sipariş"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={statusFilter === key ? "is-current" : ""}
-                onClick={() => setStatusFilter(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="admin-pos-toolbar-actions">
-          {kasaTable && (
-            <button
-              type="button"
-              className="admin-pos-quick-sale-btn"
-              onClick={() => {
-                setZoneFilter("all");
-                setStatusFilter("all");
-                setSelectedTableId(kasaTable.id);
-              }}
-            >
-              Ayakta / Hızlı Satış
-            </button>
-          )}
-          {!staffMode && (
-            <button type="button" onClick={openCustomerDisplayWindow}>
-              Müşteri Ekranı
-            </button>
-          )}
-          {!staffMode && onOpenHardware && (
-            <button
-              type="button"
-              className={`admin-pos-hw-btn ${bridgeConnected ? "is-connected" : ""}`}
-              onClick={onOpenHardware}
-              title="Ekran ve yazıcı ayarları"
-            >
-              <i aria-hidden="true" /> Donanım / Yazıcılar
-            </button>
-          )}
-          {!staffMode && (
-            <button type="button" onClick={() => setShowAddTable((v) => !v)}>
-              {showAddTable ? "Vazgeç" : "+ Masa Ekle"}
-            </button>
-          )}
-          {snapshot && snapshot.recentClosed.length > 0 && (
-            <button type="button" onClick={() => setShowHistoryModal(true)}>
-              Son Kapananlar ({snapshot.recentClosed.length})
-            </button>
-          )}
-          <button type="button" onClick={() => void loadSnapshot()}>
-            Yenile
-          </button>
-        </div>
-      </div>
-
-      {error && <p className="admin-pos-error" role="alert">{error}</p>}
-      {notice && <p className="admin-pos-notice" role="status">{notice}</p>}
-
-      {showAddTable && (
-        <form className="admin-pos-add-table-form" onSubmit={handleCreateTable}>
-          <input
-            type="text"
-            placeholder="Masa Adı (Örn: Teras 1)"
-            value={newTableName}
-            onChange={(e) => setNewTableName(e.target.value)}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Kodu (Örn: T1)"
-            value={newTableCode}
-            onChange={(e) => setNewTableCode(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Bölge (Salon / Bahçe / Teras)"
-            value={newTableZone}
-            onChange={(e) => setNewTableZone(e.target.value)}
-          />
-          <input
-            type="number"
-            min={1}
-            max={30}
-            placeholder="Kapasite"
-            value={newTableCap}
-            onChange={(e) => setNewTableCap(e.target.value)}
-          />
-          <button type="submit" disabled={busy}>Kaydet</button>
-        </form>
-      )}
-
-      <div className="admin-pos-workspace">
-        <div className="admin-pos-grid">
-          {loading ? (
-            <p className="admin-pos-empty">Masalar yükleniyor…</p>
-          ) : visibleTables.length === 0 ? (
-            <p className="admin-pos-empty">Bu filtreye uyan masa bulunamadı.</p>
-          ) : (
-            visibleTables.map((table) => {
-              const isOpen = table.activeSession !== null;
-              const hasQr = table.onlineOrders.length > 0;
-              const isSelected = selectedTable?.id === table.id;
-              const totalKurus =
-                (table.activeSession?.subtotalInKurus ?? 0) +
-                table.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0);
-
-              return (
-                <button
-                  key={table.id}
-                  type="button"
-                  onClick={() => setSelectedTableId(table.id)}
-                  className={`admin-pos-table-card ${isOpen ? "is-open" : "is-free"} ${hasQr ? "has-qr" : ""} ${isSelected ? "is-selected" : ""}`}
-                >
-                  <div className="admin-pos-table-card-inner">
-                    <div className="admin-pos-table-head">
-                      <span className="admin-pos-table-zone">{table.zone}</span>
-                      <span className="admin-pos-table-badge">
-                        {isOpen ? "Açık" : hasQr ? "QR" : "Boş"}
-                      </span>
-                    </div>
-                    <strong className="admin-pos-table-name" title={table.name}>{table.name}</strong>
-                    <div className="admin-pos-table-meta">
-                      {table.activeSession ? (
-                        <>
-                          <span className="admin-pos-timer">
-                            ⏱ {formatCompactDuration(table.activeSession.openedAt, nowMs)}
-                          </span>
-                          <span className="admin-pos-guests">
-                            {table.activeSession.guestCount} kişi
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="admin-pos-guests">{table.capacity} kişilik</span>
-                          <span className="admin-pos-status-hint">
-                            {hasQr ? `${table.onlineOrders.length} QR` : "Hazır"}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="admin-pos-table-total">
-                      {isOpen || hasQr ? (
-                        <>
-                          <strong>{money(totalKurus)}</strong>
-                          {hasQr && <small>QR ({table.onlineOrders.length})</small>}
-                        </>
-                      ) : (
-                        <span className="admin-pos-table-idle">Sipariş yok</span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        <aside className={`admin-pos-drawer ${selectedTable ? "has-selection" : ""}`}>
-          {!selectedTable ? (
-            <div className="admin-pos-drawer-empty">
-              <h3>Masa Seçin</h3>
-              <p>
-                Masa açmak, ürün eklemek, masa taşımak, fiş yazdırmak veya tahsilat alıp hesabı kapatmak için soldan bir masa seçin.
-              </p>
+    <section className={`admin-pos-wrap ${selectedTable ? "is-terminal-open" : ""}`}>
+      {!selectedTable ? (
+        <>
+          {!staffMode ? (
+            <div className="admin-pos-summary">
+              <div className="admin-pos-kpi">
+                <span>Açık Masalar</span>
+                <strong>
+                  {snapshot ? `${snapshot.summary.openTables} / ${snapshot.summary.totalTables}` : "—"}
+                </strong>
+              </div>
+              <div className="admin-pos-kpi">
+                <span>Açık Adisyon Toplamı</span>
+                <strong>{snapshot ? money(snapshot.summary.openTotalInKurus) : "—"}</strong>
+              </div>
+              <div className="admin-pos-kpi">
+                <span>Bugün Nakit</span>
+                <strong>{snapshot ? money(snapshot.summary.todayCashInKurus) : "—"}</strong>
+              </div>
+              <div className="admin-pos-kpi">
+                <span>Bugün Kart</span>
+                <strong>{snapshot ? money(snapshot.summary.todayCardInKurus) : "—"}</strong>
+              </div>
+              <div className="admin-pos-kpi">
+                <span>Kapanan Masa (Bugün)</span>
+                <strong>{snapshot ? snapshot.summary.todayClosedCount : "—"}</strong>
+              </div>
             </div>
           ) : (
-            <div className="admin-pos-drawer-body">
-              <div className="admin-pos-mobile-sheet-bar">
+            <div className="admin-pos-staff-summary">
+              <div>
+                <span>Açık Masa</span>
+                <strong>{snapshot ? `${snapshot.summary.openTables} / ${snapshot.summary.totalTables}` : "—"}</strong>
+              </div>
+              <div>
+                <span>QR Siparişli</span>
+                <strong>{snapshot ? snapshot.tables.filter((t) => t.onlineOrders.length > 0).length : "—"}</strong>
+              </div>
+            </div>
+          )}
+
+          <div className="admin-pos-toolbar">
+            <div className="admin-pos-filters-group">
+              <div className="admin-pos-zones">
+                {zones.map((z) => (
+                  <button
+                    key={z}
+                    type="button"
+                    className={zoneFilter === z ? "is-current" : ""}
+                    onClick={() => setZoneFilter(z)}
+                  >
+                    {z === "all"
+                      ? `Tüm Bölgeler (${snapshot?.summary.totalTables ?? 0})`
+                      : `${z} (${zoneCounts.get(z) ?? 0})`}
+                  </button>
+                ))}
+              </div>
+              <div className="admin-pos-zones">
+                {(
+                  [
+                    ["all", "Hepsi"],
+                    ["open", "Açık"],
+                    ["free", "Boş"],
+                    ["qr", "QR Sipariş"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={statusFilter === key ? "is-current" : ""}
+                    onClick={() => setStatusFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="admin-pos-toolbar-actions">
+              {kasaTable && (
                 <button
                   type="button"
-                  className="admin-pos-mobile-back"
-                  onClick={() => setSelectedTableId(null)}
+                  className="admin-pos-quick-sale-btn"
+                  onClick={() => {
+                    setZoneFilter("all");
+                    setStatusFilter("all");
+                    handleSelectTable(kasaTable);
+                  }}
                 >
-                  ← Masalara Dön
+                  Ayakta / Hızlı Satış
                 </button>
-                <strong>{selectedTable.name}</strong>
-              </div>
-              <header className="admin-pos-drawer-head">
-                <div>
-                  <span className="admin-pos-drawer-zone">{selectedTable.zone} · Kod: {selectedTable.code}</span>
-                  <h3>{selectedTable.name}</h3>
+              )}
+              {!staffMode && (
+                <button type="button" onClick={openCustomerDisplayWindow}>
+                  Müşteri Ekranı
+                </button>
+              )}
+              {!staffMode && onOpenHardware && (
+                <button
+                  type="button"
+                  className={`admin-pos-hw-btn ${bridgeConnected ? "is-connected" : ""}`}
+                  onClick={onOpenHardware}
+                  title="Ekran ve yazıcı ayarları"
+                >
+                  <i aria-hidden="true" /> Donanım / Yazıcılar
+                </button>
+              )}
+              {!staffMode && (
+                <button type="button" onClick={() => setShowAddTable((v) => !v)}>
+                  {showAddTable ? "Vazgeç" : "+ Masa Ekle"}
+                </button>
+              )}
+              {snapshot && snapshot.recentClosed.length > 0 && (
+                <button type="button" onClick={() => setShowHistoryModal(true)}>
+                  Son Kapananlar ({snapshot.recentClosed.length})
+                </button>
+              )}
+              <button type="button" onClick={() => void loadSnapshot()}>
+                Yenile
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="admin-pos-error" role="alert">{error}</p>}
+          {notice && <p className="admin-pos-notice" role="status">{notice}</p>}
+
+          {showAddTable && (
+            <form className="admin-pos-add-table-form" onSubmit={handleCreateTable}>
+              <input
+                type="text"
+                placeholder="Masa Adı (Örn: Teras 1)"
+                value={newTableName}
+                onChange={(e) => setNewTableName(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Kodu (Örn: T1)"
+                value={newTableCode}
+                onChange={(e) => setNewTableCode(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Bölge (Salon / Bahçe / Teras)"
+                value={newTableZone}
+                onChange={(e) => setNewTableZone(e.target.value)}
+              />
+              <input
+                type="number"
+                min={1}
+                max={30}
+                placeholder="Kapasite"
+                value={newTableCap}
+                onChange={(e) => setNewTableCap(e.target.value)}
+              />
+              <button type="submit" disabled={busy}>Kaydet</button>
+            </form>
+          )}
+
+          <div className="admin-pos-grid">
+            {loading ? (
+              <p className="admin-pos-empty">Masalar yükleniyor…</p>
+            ) : visibleTables.length === 0 ? (
+              <p className="admin-pos-empty">Bu filtreye uyan masa bulunamadı.</p>
+            ) : (
+              visibleTables.map((table) => {
+                const isOpen = table.activeSession !== null;
+                const hasQr = table.onlineOrders.length > 0;
+                const totalKurus =
+                  (table.activeSession?.subtotalInKurus ?? 0) +
+                  table.onlineOrders.reduce((s, o) => s + o.totalInKurus, 0);
+
+                return (
+                  <button
+                    key={table.id}
+                    type="button"
+                    onClick={() => handleSelectTable(table)}
+                    className={`admin-pos-table-card ${isOpen ? "is-open" : "is-free"} ${hasQr ? "has-qr" : ""}`}
+                  >
+                    <div className="admin-pos-table-card-inner">
+                      <div className="admin-pos-table-head">
+                        <span className="admin-pos-table-zone">{table.zone}</span>
+                        <span className="admin-pos-table-badge">
+                          {isOpen ? "Açık" : hasQr ? "QR" : "Boş"}
+                        </span>
+                      </div>
+                      <strong className="admin-pos-table-name" title={table.name}>{table.name}</strong>
+                      <div className="admin-pos-table-meta">
+                        {table.activeSession ? (
+                          <>
+                            <span className="admin-pos-timer">
+                              ⏱ {formatCompactDuration(table.activeSession.openedAt, nowMs)}
+                            </span>
+                            <span className="admin-pos-guests">
+                              {table.activeSession.guestCount} kişi
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="admin-pos-guests">{table.capacity} kişilik</span>
+                            <span className="admin-pos-status-hint">
+                              {hasQr ? `${table.onlineOrders.length} QR` : "Hazır"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="admin-pos-table-total">
+                        {isOpen || hasQr ? (
+                          <>
+                            <strong>{money(totalKurus)}</strong>
+                            {hasQr && <small>QR ({table.onlineOrders.length})</small>}
+                          </>
+                        ) : (
+                          <span className="admin-pos-table-idle">Sipariş yok</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="admin-pos-terminal">
+          <header className="admin-pos-terminal-bar">
+            <div className="admin-pos-terminal-left">
+              <button
+                type="button"
+                className="admin-pos-back-btn"
+                onClick={() => setSelectedTableId(null)}
+              >
+                ← Masalar
+              </button>
+              <div className="admin-pos-terminal-title">
+                <div className="admin-pos-terminal-badges">
+                  <span className="admin-pos-drawer-zone">{selectedTable.zone} · {selectedTable.code}</span>
+                  <span className={`admin-pos-state-pill ${activeSession ? "is-open" : "is-free"}`}>
+                    {activeSession ? "Açık Adisyon" : "Boş Masa"}
+                  </span>
+                  {activeSession && (
+                    <span className="admin-pos-time-pill">
+                      ⏱ {formatDuration(activeSession.openedAt, nowMs)}
+                    </span>
+                  )}
                 </div>
-                {activeSession ? (
-                  <div className="admin-pos-drawer-timer">
-                    <span>Oturum Süresi</span>
-                    <strong>{formatDuration(activeSession.openedAt, nowMs)}</strong>
+                <h3>{selectedTable.name}</h3>
+              </div>
+            </div>
+
+            <div className="admin-pos-terminal-actions">
+              {activeSession ? (
+                <>
+                  <div className="admin-pos-guest-stepper">
+                    <span>Kişi:</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void handleUpdateSessionMeta({
+                          guestCount: Math.max(1, activeSession.guestCount - 1),
+                        })
+                      }
+                      disabled={busy || activeSession.guestCount <= 1}
+                    >
+                      −
+                    </button>
+                    <strong>{activeSession.guestCount}</strong>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void handleUpdateSessionMeta({
+                          guestCount: activeSession.guestCount + 1,
+                        })
+                      }
+                      disabled={busy}
+                    >
+                      +
+                    </button>
                   </div>
-                ) : !staffMode ? (
+                  <button
+                    type="button"
+                    className={`admin-pos-tool-btn ${showTableTools ? "is-active" : ""}`}
+                    onClick={() => setShowTableTools((v) => !v)}
+                  >
+                    Not / Taşı
+                  </button>
+                  {activeSession.items.length > 0 && (
+                    <button
+                      type="button"
+                      className="admin-pos-tool-btn"
+                      onClick={() =>
+                        void printReceiptSmart(
+                          {
+                            tableName: selectedTable.name,
+                            tableZone: selectedTable.zone,
+                            openedAt: activeSession.openedAt,
+                            closedAt: null,
+                            guestCount: activeSession.guestCount,
+                            customerName: activeSession.customerName,
+                            note: sessionNoteDraft.trim() || null,
+                            items: activeSession.items,
+                            subtotalInKurus: posSubtotal,
+                            discountInKurus: discountKurus,
+                            totalInKurus: payableKurus,
+                            paymentMethod: null,
+                          },
+                          "kitchen",
+                        )
+                      }
+                    >
+                      Mutfak Fişi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="admin-pos-tool-btn"
+                    onClick={() =>
+                      openReceiptPreview({
+                        tableName: selectedTable.name,
+                        tableZone: selectedTable.zone,
+                        openedAt: activeSession.openedAt,
+                        closedAt: null,
+                        guestCount: activeSession.guestCount,
+                        customerName: activeSession.customerName,
+                        note: sessionNoteDraft.trim() || null,
+                        items: activeSession.items,
+                        subtotalInKurus: posSubtotal,
+                        discountInKurus: discountKurus,
+                        totalInKurus: payableKurus,
+                        paymentMethod: null,
+                      })
+                    }
+                  >
+                    Fiş Önizle <UiIcon name="arrow-up-right" />
+                  </button>
+                </>
+              ) : !staffMode ? (
+                <>
+                  <button
+                    type="button"
+                    className="admin-pos-tool-btn"
+                    onClick={() => void handleOpenTable()}
+                    disabled={busy}
+                  >
+                    Boş Masa Aç
+                  </button>
                   <button
                     type="button"
                     className="admin-pos-delete-table-btn"
@@ -1038,9 +1150,192 @@ export function AdminTablesPanel({
                   >
                     Masayı Kaldır
                   </button>
-                ) : null}
-              </header>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="admin-pos-tool-btn"
+                  onClick={() => void handleOpenTable()}
+                  disabled={busy}
+                >
+                  Boş Masa Aç
+                </button>
+              )}
+            </div>
+          </header>
 
+          {error && <p className="admin-pos-error" role="alert">{error}</p>}
+          {notice && <p className="admin-pos-notice" role="status">{notice}</p>}
+
+          {showTableTools && activeSession && (
+            <div className="admin-pos-tools-bar">
+              <div className="admin-pos-note-row">
+                <input
+                  type="text"
+                  placeholder="Masa notu (Örn: Doğum günü, pencere kenarı)"
+                  value={sessionNoteDraft}
+                  onChange={(e) => setSessionNoteDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleUpdateSessionMeta({ note: sessionNoteDraft })}
+                  disabled={busy}
+                >
+                  Not Kaydet
+                </button>
+              </div>
+              <div className="admin-pos-move-row">
+                <select
+                  value={moveTargetId}
+                  onChange={(e) => setMoveTargetId(e.target.value)}
+                >
+                  <option value="">Masa Taşı: Boş masa seç…</option>
+                  {freeTablesForMove.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.zone})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!moveTargetId || busy}
+                  onClick={() => void handleMoveTable()}
+                >
+                  Taşı
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="admin-pos-mobile-tabs" role="tablist" aria-label="Adisyon görünümü">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePosTab === "menu"}
+              className={mobilePosTab === "menu" ? "is-current" : ""}
+              onClick={() => setMobilePosTab("menu")}
+            >
+              Menü ({filteredCatalog.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePosTab === "ticket"}
+              className={mobilePosTab === "ticket" ? "is-current" : ""}
+              onClick={() => setMobilePosTab("ticket")}
+            >
+              Adisyon ({activeSession?.items.reduce((s, i) => s + i.quantity, 0) ?? 0})
+              {activeSession ? ` · ${money(payableKurus)}` : ""}
+            </button>
+          </div>
+
+          <div className={`admin-pos-terminal-body tab-${mobilePosTab}`}>
+            <section className="admin-pos-menu-pane" aria-label="Ürün Menüsü">
+              <div className="admin-pos-cat-tabs" role="tablist" aria-label="Kategoriler">
+                <button
+                  type="button"
+                  className={catalogCat === "all" ? "is-current" : ""}
+                  onClick={() => setCatalogCat("all")}
+                >
+                  Tüm Ürünler
+                </button>
+                {catalogCategories.map(([slug, label]) => (
+                  <button
+                    key={slug}
+                    type="button"
+                    className={catalogCat === slug ? "is-current" : ""}
+                    onClick={() => setCatalogCat(slug)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="admin-pos-menu-controls">
+                <div className="admin-pos-quick-qty" role="group" aria-label="Hızlı adet seçimi">
+                  <span>Adet:</span>
+                  {([1, 2, 3, 5] as const).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      className={Number(addQty) === q ? "is-current" : ""}
+                      onClick={() => setAddQty(String(q))}
+                    >
+                      {q}×
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={addQty}
+                    onChange={(e) => setAddQty(e.target.value)}
+                    aria-label="Özel adet"
+                  />
+                </div>
+                <div className="admin-pos-menu-search-group">
+                  <input
+                    type="search"
+                    placeholder="Ürün ara…"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className={showCustomItemForm ? "is-active" : ""}
+                    onClick={() => setShowCustomItemForm((v) => !v)}
+                  >
+                    + Özel Kalem
+                  </button>
+                </div>
+              </div>
+
+              {showCustomItemForm && (
+                <form className="admin-pos-custom-item" onSubmit={handleAddCustomItem}>
+                  <input
+                    type="text"
+                    placeholder="Özel ürün / ikram / açık tutar adı"
+                    value={customItemName}
+                    onChange={(e) => setCustomItemName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Tutar (₺)"
+                    value={customItemPrice}
+                    onChange={(e) => setCustomItemPrice(e.target.value)}
+                  />
+                  <button type="submit" disabled={busy}>+ Masaya Ekle</button>
+                </form>
+              )}
+
+              {addingLabel && (
+                <div className="admin-pos-loading-wrap" role="status" aria-live="polite">
+                  <div className="admin-pos-loading-bar">
+                    <span />
+                  </div>
+                  <small>{addingLabel}</small>
+                </div>
+              )}
+
+              <div className="admin-pos-product-grid">
+                {filteredCatalog.map((item) => (
+                  <button
+                    key={item.slug}
+                    type="button"
+                    className="admin-pos-product-tile"
+                    disabled={busy || !item.id}
+                    onClick={() => void handleAddMenuItem(item)}
+                  >
+                    <small>{item.categoryName}</small>
+                    <span>{item.name}</span>
+                    <strong>{item.priceInKurus ? money(item.priceInKurus) : "—"}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <aside className="admin-pos-ticket-pane" aria-label="Canlı Adisyon ve Tahsilat">
               {selectedTable.onlineOrders.length > 0 && (
                 <div className="admin-pos-qr-box">
                   <div className="admin-pos-qr-head">
@@ -1082,418 +1377,248 @@ export function AdminTablesPanel({
               )}
 
               {!activeSession ? (
-                <div className="admin-pos-open-box">
-                  <h4>Masa Aç</h4>
-                  <div className="admin-pos-open-fields">
-                    <label>
-                      <span>Kişi Sayısı</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={30}
-                        value={guestCount}
-                        onChange={(e) => setGuestCount(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      <span>Müşteri / Masa Notu (Opsiyonel)</span>
-                      <input
-                        type="text"
-                        placeholder="Örn: Deniz Bey"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                      />
-                    </label>
+                <div className="admin-pos-ticket-empty-state">
+                  <div className="admin-pos-open-box">
+                    <h4>Yeni Adisyon Başlat</h4>
+                    <p className="admin-pos-hint">
+                      Soldan herhangi bir ürüne dokunduğunuzda masa otomatik açılır ve ürün eklenir. İsterseniz müşteri bilgisiyle boş masa da açabilirsiniz.
+                    </p>
+                    <div className="admin-pos-open-fields">
+                      <label>
+                        <span>Kişi Sayısı</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={guestCount}
+                          onChange={(e) => setGuestCount(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>Müşteri / Not</span>
+                        <input
+                          type="text"
+                          placeholder="Örn: Deniz Bey"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-pos-primary-btn"
+                      onClick={() => void handleOpenTable()}
+                      disabled={busy}
+                    >
+                      Sadece Masa Aç
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="admin-pos-primary-btn"
-                    onClick={() => void handleOpenTable()}
-                    disabled={busy}
-                  >
-                    Masayı Aç
-                  </button>
-                  <p className="admin-pos-hint">
-                    İpucu: Aşağıdan doğrudan ürün seçerseniz masa otomatik açılır.
-                  </p>
                 </div>
               ) : (
                 <>
-                  <div className="admin-pos-session-meta">
-                    <div className="admin-pos-guest-stepper">
-                      <span>Kişi:</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleUpdateSessionMeta({
-                            guestCount: Math.max(1, activeSession.guestCount - 1),
-                          })
-                        }
-                        disabled={busy || activeSession.guestCount <= 1}
-                      >
-                        −
-                      </button>
-                      <strong>{activeSession.guestCount}</strong>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleUpdateSessionMeta({
-                            guestCount: activeSession.guestCount + 1,
-                          })
-                        }
-                        disabled={busy}
-                      >
-                        +
-                      </button>
-                    </div>
-                    <div className="admin-pos-note-row">
-                      <input
-                        type="text"
-                        placeholder="Masa notu (Örn: Doğum günü, pencere kenarı)"
-                        value={sessionNoteDraft}
-                        onChange={(e) => setSessionNoteDraft(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void handleUpdateSessionMeta({ note: sessionNoteDraft })}
-                        disabled={busy}
-                      >
-                        Kaydet
-                      </button>
-                    </div>
+                  <div className="admin-pos-ticket-head">
+                    <h4>Adisyon Kalemleri ({activeSession.items.length})</h4>
+                    <span>
+                      {activeSession.customerName ? activeSession.customerName : `${activeSession.guestCount} kişi`}
+                    </span>
                   </div>
 
-                  <div className="admin-pos-move-row">
-                    <select
-                      value={moveTargetId}
-                      onChange={(e) => setMoveTargetId(e.target.value)}
-                    >
-                      <option value="">Masa Taşı: Hedef boş masa seç…</option>
-                      {freeTablesForMove.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.zone})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      disabled={!moveTargetId || busy}
-                      onClick={() => void handleMoveTable()}
-                    >
-                      Taşı
-                    </button>
+                  <div className="admin-pos-ticket-items">
+                    {activeSession.items.length === 0 ? (
+                      <p className="admin-pos-empty">
+                        Adisyon açık. Soldaki menüden ürün dokunarak ekleyin.
+                      </p>
+                    ) : (
+                      activeSession.items.map((item) => (
+                        <div key={item.id} className="admin-pos-bill-item">
+                          <div className="admin-pos-bill-item-info">
+                            <strong>{item.productName}</strong>
+                            <small>{money(item.unitPriceInKurus)} / adet</small>
+                          </div>
+                          <div className="admin-pos-qty">
+                            <button
+                              type="button"
+                              onClick={() => void handleUpdateItemQty(item.id, item.quantity - 1)}
+                              disabled={busy}
+                              aria-label={`${item.productName} azalt`}
+                            >
+                              −
+                            </button>
+                            <span>{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => void handleUpdateItemQty(item.id, item.quantity + 1)}
+                              disabled={busy}
+                              aria-label={`${item.productName} artır`}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <b className="admin-pos-bill-line-total">{money(item.lineTotalInKurus)}</b>
+                        </div>
+                      ))
+                    )}
                   </div>
 
-                  <div className="admin-pos-bill">
-                    <div className="admin-pos-bill-head">
-                      <h4>Adisyon ({activeSession.items.length} kalem)</h4>
-                      <div className="admin-pos-bill-head-actions">
-                        {activeSession.items.length > 0 && (
+                  {!staffMode && (
+                    <div className="admin-pos-settlement">
+                      <div className="admin-pos-payable">
+                        <div>
+                          <span>Ödenecek Tutar</span>
+                          {(discountKurus > 0 || qrTotalKurus > 0) && (
+                            <small>
+                              Adisyon: {money(posSubtotal)}
+                              {discountKurus > 0 ? ` · İndirim −${money(discountKurus)}` : ""}
+                            </small>
+                          )}
+                        </div>
+                        <strong>{money(payableKurus)}</strong>
+                      </div>
+
+                      <div className="admin-pos-pay-methods">
+                        {(
+                          [
+                            ["cash", "Nakit"],
+                            ["card", "Kredi Kartı"],
+                            ["split", "Parçalı"],
+                            ["free", "İkram"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            className={paymentMethod === key ? "is-current" : ""}
+                            onClick={() => setPaymentMethod(key)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {paymentMethod === "cash" && (
+                        <div className="admin-pos-quick-cash">
                           <button
                             type="button"
                             onClick={() =>
-                              void printReceiptSmart(
-                                {
-                                  tableName: selectedTable.name,
-                                  tableZone: selectedTable.zone,
-                                  openedAt: activeSession.openedAt,
-                                  closedAt: null,
-                                  guestCount: activeSession.guestCount,
-                                  customerName: activeSession.customerName,
-                                  note: sessionNoteDraft.trim() || null,
-                                  items: activeSession.items,
-                                  subtotalInKurus: posSubtotal,
-                                  discountInKurus: discountKurus,
-                                  totalInKurus: payableKurus,
-                                  paymentMethod: null,
-                                },
-                                "kitchen",
-                              )
+                              setCashTenderedTl((payableKurus / 100).toFixed(2))
                             }
                           >
-                            Mutfak Fişi
+                            Tam
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openReceiptPreview({
-                              tableName: selectedTable.name,
-                              tableZone: selectedTable.zone,
-                              openedAt: activeSession.openedAt,
-                              closedAt: null,
-                              guestCount: activeSession.guestCount,
-                              customerName: activeSession.customerName,
-                              note: sessionNoteDraft.trim() || null,
-                              items: activeSession.items,
-                              subtotalInKurus: posSubtotal,
-                              discountInKurus: discountKurus,
-                              totalInKurus: payableKurus,
-                              paymentMethod: null,
-                            })
-                          }
-                        >
-                          Fiş Önizle / Yazdır <UiIcon name="arrow-up-right" />
-                        </button>
-                      </div>
-                    </div>
+                          {([50, 100, 200, 500] as const).map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => addQuickCashAmount(amt)}
+                            >
+                              +{amt}₺
+                            </button>
+                          ))}
+                          {cashTenderedTl && (
+                            <button
+                              type="button"
+                              className="is-clear"
+                              onClick={() => setCashTenderedTl("")}
+                            >
+                              Sil
+                            </button>
+                          )}
+                        </div>
+                      )}
 
-                    {activeSession.items.length === 0 ? (
-                      <p className="admin-pos-empty">Henüz ürün eklenmedi.</p>
-                    ) : (
-                      <div className="admin-pos-bill-items">
-                        {activeSession.items.map((item) => (
-                          <div key={item.id} className="admin-pos-bill-item">
-                            <div className="admin-pos-bill-item-info">
-                              <strong>{item.productName}</strong>
-                              <small>{money(item.unitPriceInKurus)} / adet</small>
-                            </div>
-                            <div className="admin-pos-qty">
-                              <button
-                                type="button"
-                                onClick={() => void handleUpdateItemQty(item.id, item.quantity - 1)}
-                                disabled={busy}
-                              >
-                                −
-                              </button>
-                              <span>{item.quantity}</span>
-                              <button
-                                type="button"
-                                onClick={() => void handleUpdateItemQty(item.id, item.quantity + 1)}
-                                disabled={busy}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <b className="admin-pos-bill-line-total">{money(item.lineTotalInKurus)}</b>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="admin-pos-checkout">
-                    <h4>Tahsilat &amp; Hesap Kapatma</h4>
-                    <div className="admin-pos-pay-methods">
-                      {(
-                        [
-                          ["cash", "Nakit"],
-                          ["card", "Kredi Kartı"],
-                          ["split", "Parçalı"],
-                          ["free", "İkram"],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={paymentMethod === key ? "is-current" : ""}
-                          onClick={() => setPaymentMethod(key)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="admin-pos-pay-inputs">
-                      <label>
-                        <span>İndirim (₺)</span>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={discountTl}
-                          onChange={(e) => setDiscountTl(e.target.value)}
-                        />
-                      </label>
-                      {paymentMethod === "cash" && (
+                      <div className="admin-pos-pay-inputs">
                         <label>
-                          <span>Alınan Nakit (₺)</span>
+                          <span>İndirim (₺)</span>
                           <input
                             type="text"
                             inputMode="decimal"
-                            placeholder="Para üstü için…"
-                            value={cashTenderedTl}
-                            onChange={(e) => setCashTenderedTl(e.target.value)}
+                            placeholder="0.00"
+                            value={discountTl}
+                            onChange={(e) => setDiscountTl(e.target.value)}
                           />
                         </label>
-                      )}
-                      {paymentMethod === "split" && (
-                        <>
+                        {paymentMethod === "cash" && (
                           <label>
-                            <span>Nakit (₺)</span>
+                            <span>Alınan Nakit (₺)</span>
                             <input
                               type="text"
                               inputMode="decimal"
-                              placeholder="0.00"
-                              value={splitCashTl}
-                              onChange={(e) => setSplitCashTl(e.target.value)}
+                              placeholder="Para üstü…"
+                              value={cashTenderedTl}
+                              onChange={(e) => setCashTenderedTl(e.target.value)}
                             />
                           </label>
-                          <label>
-                            <span>Kart (₺)</span>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="0.00"
-                              value={splitCardTl}
-                              onChange={(e) => setSplitCardTl(e.target.value)}
-                            />
-                          </label>
-                        </>
-                      )}
-                    </div>
-
-                    {paymentMethod === "cash" && cashTenderedKurus > 0 && (
-                      <div className="admin-pos-change-box">
-                        <span>Para Üstü</span>
-                        <strong>{money(changeKurus)}</strong>
+                        )}
+                        {paymentMethod === "split" && (
+                          <>
+                            <label>
+                              <span>Nakit (₺)</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0.00"
+                                value={splitCashTl}
+                                onChange={(e) => setSplitCashTl(e.target.value)}
+                              />
+                            </label>
+                            <label>
+                              <span>Kart (₺)</span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="0.00"
+                                value={splitCardTl}
+                                onChange={(e) => setSplitCardTl(e.target.value)}
+                              />
+                            </label>
+                          </>
+                        )}
                       </div>
-                    )}
 
-                    {selectedTable.onlineOrders.length > 0 && (
-                      <label className="admin-pos-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={closeOnlineOrders}
-                          onChange={(e) => setCloseOnlineOrders(e.target.checked)}
-                        />
-                        <span>Bu masadaki QR siparişleri de &ldquo;Teslim Edildi&rdquo; olarak kapat</span>
-                      </label>
-                    )}
+                      {paymentMethod === "cash" && cashTenderedKurus > 0 && (
+                        <div className="admin-pos-change-box">
+                          <span>Para Üstü</span>
+                          <strong>{money(changeKurus)}</strong>
+                        </div>
+                      )}
 
-                    <div className="admin-pos-payable">
-                      <span>Ödenecek Tutar</span>
-                      <strong>{money(payableKurus)}</strong>
+                      {selectedTable.onlineOrders.length > 0 && (
+                        <label className="admin-pos-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={closeOnlineOrders}
+                            onChange={(e) => setCloseOnlineOrders(e.target.checked)}
+                          />
+                          <span>QR siparişleri de teslim edildi say</span>
+                        </label>
+                      )}
+
+                      <div className="admin-pos-close-actions">
+                        <button
+                          type="button"
+                          className="admin-pos-primary-btn"
+                          onClick={() => void handleCloseTable(false)}
+                          disabled={busy}
+                        >
+                          Tahsil Et &amp; Kapat
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-pos-secondary-btn"
+                          onClick={() => void handleCloseTable(true)}
+                          disabled={busy}
+                        >
+                          Kapat &amp; Fiş Yazdır
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="admin-pos-close-actions">
-                      <button
-                        type="button"
-                        className="admin-pos-primary-btn"
-                        onClick={() => void handleCloseTable(false)}
-                        disabled={busy}
-                      >
-                        Tahsil Et &amp; Kapat
-                      </button>
-                      <button
-                        type="button"
-                        className="admin-pos-secondary-btn"
-                        onClick={() => void handleCloseTable(true)}
-                        disabled={busy}
-                      >
-                        Kapat &amp; Fiş Yazdır
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </>
               )}
-
-              <div className="admin-pos-catalog">
-                <div className="admin-pos-catalog-head">
-                  <h4>Masaya Ürün Ekle</h4>
-                  <div className="admin-pos-quick-qty" role="group" aria-label="Hızlı adet seçimi">
-                    <span>Adet:</span>
-                    {([1, 2, 3, 5] as const).map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        className={Number(addQty) === q ? "is-current" : ""}
-                        onClick={() => setAddQty(String(q))}
-                      >
-                        {q}×
-                      </button>
-                    ))}
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={addQty}
-                      onChange={(e) => setAddQty(e.target.value)}
-                      aria-label="Özel adet"
-                    />
-                  </div>
-                </div>
-
-                {addingLabel && (
-                  <div className="admin-pos-loading-wrap" role="status" aria-live="polite">
-                    <div className="admin-pos-loading-bar">
-                      <span />
-                    </div>
-                    <small>{addingLabel}</small>
-                  </div>
-                )}
-
-                <div className="admin-pos-catalog-filters">
-                  <input
-                    type="search"
-                    placeholder="Ürün ara…"
-                    value={catalogSearch}
-                    onChange={(e) => setCatalogSearch(e.target.value)}
-                  />
-                  <select
-                    value={catalogCat}
-                    onChange={(e) => setCatalogCat(e.target.value)}
-                  >
-                    <option value="all">Tüm Kategoriler</option>
-                    {catalogCategories.map(([slug, label]) => (
-                      <option key={slug} value={slug}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="admin-pos-catalog-grid">
-                  {filteredCatalog.slice(0, 36).map((item) => (
-                    <button
-                      key={item.slug}
-                      type="button"
-                      disabled={busy || !item.id}
-                      onClick={() => void handleAddMenuItem(item)}
-                    >
-                      <span>{item.name}</span>
-                      <strong>{item.priceInKurus ? money(item.priceInKurus) : "—"}</strong>
-                    </button>
-                  ))}
-                </div>
-
-                <form className="admin-pos-custom-item" onSubmit={handleAddCustomItem}>
-                  <input
-                    type="text"
-                    placeholder="Özel ürün / ek kalem"
-                    value={customItemName}
-                    onChange={(e) => setCustomItemName(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Tutar (₺)"
-                    value={customItemPrice}
-                    onChange={(e) => setCustomItemPrice(e.target.value)}
-                  />
-                  <button type="submit" disabled={busy}>+ Ekle</button>
-                </form>
-              </div>
-
-              <div className="admin-pos-logs">
-                <h4>Son İşlemler (24 Saat)</h4>
-                {selectedTable.recentLogs.length === 0 ? (
-                  <p className="admin-pos-empty">Son 24 saatte kayıtlı işlem yok.</p>
-                ) : (
-                  <ul className="admin-pos-log-list">
-                    {selectedTable.recentLogs.map((log) => (
-                      <li key={log.id}>
-                        <span>{log.summary}</span>
-                        <time>{formatTime(log.createdAt)}</time>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-        </aside>
-      </div>
+            </aside>
+          </div>
+        </div>
+      )}
 
       {showHistoryModal && snapshot && snapshot.recentClosed.length > 0 && (
         <div
