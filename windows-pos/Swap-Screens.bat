@@ -1,0 +1,3 @@
+@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$cfgPath = Join-Path '%~dp0' 'config.json'; $c = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json; $oldCashier = if ($null -ne $c.cashierScreenIndex) { [int]$c.cashierScreenIndex } else { 0 }; $oldCust = if ($null -ne $c.customerScreenIndex) { [int]$c.customerScreenIndex } else { 1 }; $c.cashierScreenIndex = $oldCust; $c.customerScreenIndex = $oldCashier; $c.swapScreens = $false; $c | ConvertTo-Json -Depth 4 | Set-Content $cfgPath -Encoding UTF8; Write-Host ('Kasa Ekrani: ' + ($c.cashierScreenIndex + 1) + ' | Musteri Ekrani: ' + ($c.customerScreenIndex + 1))"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0BonjPOS.ps1" -SkipDelay

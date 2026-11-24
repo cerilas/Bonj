@@ -620,6 +620,33 @@ export const tableActivityLogs = pgTable(
   ],
 );
 
+export const posHardwareSettings = pgTable(
+  "pos_hardware_settings",
+  {
+    id: serial("id").primaryKey(),
+    terminalKey: varchar("terminal_key", { length: 40 }).notNull().default("main"),
+    cashierScreenIndex: integer("cashier_screen_index").notNull().default(0),
+    customerScreenIndex: integer("customer_screen_index").notNull().default(1),
+    cashierPrinterName: varchar("cashier_printer_name", { length: 160 }),
+    kitchenPrinterName: varchar("kitchen_printer_name", { length: 160 }),
+    paperWidthMm: integer("paper_width_mm").notNull().default(80),
+    autoPrintCashierOnClose: boolean("auto_print_cashier_on_close").notNull().default(true),
+    autoPrintKitchenOnOrder: boolean("auto_print_kitchen_on_order").notNull().default(false),
+    lastAgentSyncAt: timestamp("last_agent_sync_at", { withTimezone: true }),
+    lastKnownMonitorsJson: text("last_known_monitors_json"),
+    lastKnownPrintersJson: text("last_known_printers_json"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("pos_hardware_settings_terminal_uidx").on(table.terminalKey),
+  ],
+);
+
 export type Category = typeof categories.$inferSelect;
 export type MenuItemRecord = typeof menuItems.$inferSelect;
 export type ContactMessageRecord = typeof contactMessages.$inferSelect;
@@ -636,4 +663,5 @@ export type TableSessionItemRecord = typeof tableSessionItems.$inferSelect;
 export type StaffUserRecord = typeof staffUsers.$inferSelect;
 export type StaffSessionRecord = typeof staffSessions.$inferSelect;
 export type TableActivityLogRecord = typeof tableActivityLogs.$inferSelect;
+export type PosHardwareSettingsRecord = typeof posHardwareSettings.$inferSelect;
 

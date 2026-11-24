@@ -29,9 +29,13 @@ export function CustomerDisplayExperience() {
   const [state, setState] = useState<CustomerDisplayState>({ mode: "idle", updatedAt: 0 });
   const [now, setNow] = useState(() => new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isOsFullscreen, setIsOsFullscreen] = useState(false);
 
   useEffect(() => {
-    setState(readCustomerDisplayState());
+    const rafId = window.requestAnimationFrame(() => {
+      setState(readCustomerDisplayState());
+      checkFullscreenState();
+    });
 
     const onStorage = (e: StorageEvent) => {
       if (e.key === CUSTOMER_DISPLAY_STORAGE_KEY && e.newValue) {
@@ -55,14 +59,24 @@ export function CustomerDisplayExperience() {
     }
 
     const clock = window.setInterval(() => setNow(new Date()), 1000);
-    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onFs);
+    const checkFullscreenState = () => {
+      const apiFs = Boolean(document.fullscreenElement);
+      const viewportFs =
+        window.innerHeight >= window.screen.height - 4 &&
+        window.innerWidth >= window.screen.width - 4;
+      setIsFullscreen(apiFs);
+      setIsOsFullscreen(apiFs || viewportFs);
+    };
+    document.addEventListener("fullscreenchange", checkFullscreenState);
+    window.addEventListener("resize", checkFullscreenState);
 
     return () => {
+      window.cancelAnimationFrame(rafId);
       window.removeEventListener("storage", onStorage);
       channel?.close();
       window.clearInterval(clock);
-      document.removeEventListener("fullscreenchange", onFs);
+      document.removeEventListener("fullscreenchange", checkFullscreenState);
+      window.removeEventListener("resize", checkFullscreenState);
     };
   }, []);
 
@@ -133,14 +147,16 @@ export function CustomerDisplayExperience() {
             <strong>{timeText}</strong>
             <small>{dateText}</small>
           </div>
-          <button
-            type="button"
-            className="cd-fs-btn"
-            onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "Tam ekrandan çık" : "Tam ekran"}
-          >
-            {isFullscreen ? "Küçült" : "Tam Ekran"}
-          </button>
+          {!isOsFullscreen && (
+            <button
+              type="button"
+              className="cd-fs-btn"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Tam ekrandan çık" : "Tam ekran"}
+            >
+              {isFullscreen ? "Küçült" : "Tam Ekran"}
+            </button>
+          )}
         </div>
       </header>
 

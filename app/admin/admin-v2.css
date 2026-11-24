@@ -1514,15 +1514,22 @@
   .admin-sidebar nav {
     width: 100%;
     height: 54px;
-    display: grid;
-    grid-template-columns: repeat(11, minmax(0, 1fr));
-    gap: 3px;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 4px;
     margin: 0;
+  }
+
+  .admin-sidebar nav::-webkit-scrollbar {
+    display: none;
   }
 
   .admin-sidebar nav a,
   .admin-sidebar nav button {
-    width: 100%;
+    flex: 0 0 44px;
+    width: 44px;
     min-height: 54px;
     justify-content: center;
     border-radius: 8px;
@@ -5184,4 +5191,418 @@ html[data-theme="dark"] .bonj-auth-logo {
   border-color: var(--admin-accent) !important;
   background: var(--admin-accent) !important;
   color: #fff !important;
+}
+
+.admin-pos-hw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-pos-hw-btn i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.admin-pos-hw-btn.is-connected i {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+}
+
+.admin-pos-bill-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* POS Hardware & Printers Panel */
+.admin-hw-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.admin-hw-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+}
+
+.admin-hw-status-card.is-ok {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.admin-hw-status-card.is-warn {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.admin-hw-status-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-hw-status-top span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.admin-hw-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--admin-line);
+  color: var(--admin-ink);
+}
+
+.admin-hw-status-card.is-ok .admin-hw-pill {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+}
+
+.admin-hw-status-card.is-warn .admin-hw-pill {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+
+.admin-hw-status-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--admin-ink);
+  word-break: break-word;
+}
+
+.admin-hw-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-hw-dl-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.admin-hw-mini-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-hw-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-hw-panel {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-hw-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-hw-panel-head h2 {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--admin-ink);
+}
+
+.admin-hw-panel-head p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+
+.admin-hw-monitor-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.admin-hw-monitor-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-hw-monitor-card.is-cashier {
+  border-color: var(--admin-accent);
+}
+
+.admin-hw-monitor-card.is-customer {
+  border-color: #10b981;
+}
+
+.admin-hw-monitor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-hw-monitor-head small {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--admin-muted);
+}
+
+.admin-hw-monitor-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.admin-hw-monitor-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-hw-monitor-roles em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--admin-line);
+  color: var(--admin-ink);
+}
+
+.admin-hw-monitor-roles em.is-cashier {
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-hw-monitor-roles em.is-customer {
+  background: #10b981;
+  color: #fff;
+}
+
+.admin-hw-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-hw-form-row > label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-muted);
+}
+
+.admin-hw-form-row select {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel-strong);
+  color: var(--admin-ink);
+  font-size: 13px;
+}
+
+.admin-hw-toggles {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.admin-hw-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-ink);
+  cursor: pointer;
+}
+
+.admin-hw-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--admin-accent);
+}
+
+.admin-hw-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-hw-printers-table-wrap h3 {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.admin-hw-printer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-hw-printer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-panel-strong);
+}
+
+.admin-hw-printer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-hw-printer-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-hw-printer-info small {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.admin-hw-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(169, 25, 64, 0.14);
+  color: var(--admin-accent);
+}
+
+.admin-hw-tag.is-muted {
+  background: var(--admin-line);
+  color: var(--admin-muted);
+}
+
+.admin-hw-printer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-hw-online-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.admin-hw-online-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.admin-hw-online-badge.is-ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.admin-hw-online-badge.is-bad {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.admin-hw-printer-right button {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-line-strong);
+  background: var(--admin-panel);
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-hw-printer-right button.is-selected {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-hw-sync-foot {
+  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+@media (max-width: 900px) {
+  .admin-hw-status-grid,
+  .admin-hw-form-row {
+    grid-template-columns: 1fr;
+  }
 }

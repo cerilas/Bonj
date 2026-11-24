@@ -9,6 +9,7 @@ import { getAdminOrder } from "@/lib/admin-orders";
 import { getAdminMessage } from "@/lib/admin-messages";
 import { getAdminCateringRequest } from "@/lib/admin-catering";
 import { getAdminUsers } from "@/lib/admin-users";
+import { getPosHardwareSettings } from "@/lib/pos-hardware";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const adminViews = new Set<AdminView>(["analytics", "products", "categories", "tables", "orders", "messages", "catering", "users", "staff", "notifications", "api-docs"]);
+const adminViews = new Set<AdminView>(["analytics", "products", "categories", "tables", "orders", "messages", "catering", "users", "staff", "notifications", "hardware", "api-docs"]);
 
 export default async function AdminPage({
   searchParams,
@@ -43,6 +44,7 @@ export default async function AdminPage({
     productPage,
     categories,
     notificationSettings,
+    hardwareSettings,
     adminUsers,
     selectedOrder,
     selectedMessage,
@@ -51,6 +53,7 @@ export default async function AdminPage({
     getAdminProducts(),
     getAdminCategories(),
     getAdminNotificationSettings(),
+    getPosHardwareSettings(),
     getAdminUsers(),
     initialView === "orders" && itemId ? getAdminOrder(itemId) : Promise.resolve(null),
     initialView === "messages" && itemId ? getAdminMessage(itemId) : Promise.resolve(null),
@@ -65,6 +68,7 @@ export default async function AdminPage({
       initialProductPage={productPage}
       categories={categories}
       initialNotificationSettings={notificationSettings}
+      initialHardwareSettings={hardwareSettings}
       dailySummaryCronUrl={`${siteBaseUrl}/api/cron/daily-summary`}
       apiBaseUrl={siteBaseUrl}
       initialUsers={adminUsers}

@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminCafeTable, AdminClosedTableSession, AdminTablesSnapshot } from "@/lib/admin-tables";
 import { publishCustomerDisplayState } from "@/lib/customer-display";
+import type { PosHardwareSettingsDTO } from "@/lib/pos-hardware";
+import {
+  fetchLocalBridgeHardware,
+  sendLocalBridgeReceiptPrint,
+} from "@/lib/pos-hardware-client";
 import { BrandLogo } from "../components/BrandLogo";
 import { UiIcon } from "../components/UiIcon";
 
@@ -89,12 +94,14 @@ export function posPaymentLabel(method: string | null) {
 
 export function AdminTablesPanel({
   onNavigateToOrders,
+  onOpenHardware,
   onPrintReceiptChange,
   staffMode = false,
   focusTableId,
   onFocusTableHandled,
 }: {
   onNavigateToOrders?: () => void;
+  onOpenHardware?: () => void;
   onPrintReceiptChange?: (receipt: PosPrintReceiptData | null) => void;
   staffMode?: boolean;
   focusTableId?: number | null;
@@ -147,6 +154,8 @@ export function AdminTablesPanel({
   // Receipt preview & recent closed history modal
   const [previewReceipt, setPreviewReceipt] = useState<PosPrintReceiptData | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [hwSettings, setHwSettings] = useState<PosHardwareSettingsDTO | null>(null);
+  const [bridgeConnected, setBridgeConnected] = useState(false);
   const paidHoldUntilRef = useRef<number>(0);
 
   const loadSnapshot = useCallback(async () => {
@@ -169,6 +178,17 @@ export function AdminTablesPanel({
       .then((r) => r.json())
       .then((d: { items?: CatalogItem[] }) => {
         if (Array.isArray(d.items)) setCatalog(d.items);
+      })
+      .catch(() => {});
+    fetch("/api/admin/hardware", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ settings?: PosHardwareSettingsDTO }>) : null))
+      .then((d) => {
+        if (d?.settings) setHwSettings(d.settings);
+      })
+      .catch(() => {});
+    fetchLocalBridgeHardware()
+      .then((local) => {
+        setBridgeConnected(Boolean(local));
       })
       .catch(() => {});
   }, [loadSnapshot]);
@@ -255,11 +275,64 @@ export function AdminTablesPanel({
     setTimeout(() => setNotice((curr) => (curr === msg ? "" : curr)), 3500);
   }
 
+  async function printReceiptSmart(receipt: PosPrintReceiptData, target: "cashier" | "kitchen") {
+    const printerName =
+      target === "kitchen"
+        ? hwSettings?.kitchenPrinterName
+        : hwSettings?.cashierPrinterName;
+    if (bridgeConnected && printerName) {
+      const res = await sendLocalBridgeReceiptPrint({
+        target,
+        printerName,
+        paperWidthMm: hwSettings?.paperWidthMm ?? 80,
+        tableZone: receipt.tableZone,
+        tableName: receipt.tableName,
+        openedAt: receipt.openedAt,
+        closedAt: receipt.closedAt,
+        guestCount: receipt.guestCount,
+        customerName: receipt.customerName,
+        note: receipt.note,
+        paymentMethod: receipt.paymentMethod,
+        subtotalInKurus: receipt.subtotalInKurus,
+        discountInKurus: receipt.discountInKurus,
+        totalInKurus: receipt.totalInKurus,
+        items: receipt.items,
+      });
+      if (res.ok) {
+        flashNotice(
+          `${target === "kitchen" ? "Mutfak fişi" : "Adisyon fişi"} (${printerName}) yazdırıldı.`,
+        );
+        return true;
+      }
+      if (target === "kitchen") {
+        setError(res.error || "Mutfak yazıcısına gönderilemedi.");
+        return false;
+      }
+    } else if (target === "kitchen") {
+      setError(
+        !bridgeConnected
+          ? "Mutfak fişi için kasa bilgisayarında Windows POS ajanı çalışıyor olmalıdır."
+          : "Mutfak yazıcısı seçilmedi (Donanım & Yazıcılar'dan seçin).",
+      );
+      return false;
+    }
+    setTimeout(() => window.print(), 120);
+    return false;
+  }
+
   function openReceiptPreview(receipt: PosPrintReceiptData, autoPrint = false) {
     setPreviewReceipt(receipt);
     onPrintReceiptChange?.(receipt);
     if (autoPrint) {
-      setTimeout(() => window.print(), 120);
+      const shouldUseBridge =
+        bridgeConnected &&
+        Boolean(hwSettings?.cashierPrinterName) &&
+        hwSettings?.autoPrintCashierOnClose !== false;
+      if (shouldUseBridge) {
+        void printReceiptSmart(receipt, "cashier");
+      } else {
+        setTimeout(() => window.print(), 120);
+      }
     }
   }
 
@@ -326,6 +399,32 @@ export function AdminTablesPanel({
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || "Ürün eklenemedi.");
       setAddQty("1");
+      if (hwSettings?.autoPrintKitchenOnOrder && bridgeConnected && hwSettings.kitchenPrinterName) {
+        void sendLocalBridgeReceiptPrint({
+          target: "kitchen",
+          printerName: hwSettings.kitchenPrinterName,
+          paperWidthMm: hwSettings.paperWidthMm,
+          tableZone: selectedTable.zone,
+          tableName: selectedTable.name,
+          openedAt: selectedTable.activeSession?.openedAt ?? new Date().toISOString(),
+          closedAt: null,
+          guestCount: selectedTable.activeSession?.guestCount ?? 2,
+          customerName: selectedTable.activeSession?.customerName ?? null,
+          note: selectedTable.activeSession?.note ?? null,
+          paymentMethod: null,
+          subtotalInKurus: (item.priceInKurus ?? 0) * qty,
+          discountInKurus: 0,
+          totalInKurus: (item.priceInKurus ?? 0) * qty,
+          items: [
+            {
+              productName: item.name,
+              quantity: qty,
+              unitPriceInKurus: item.priceInKurus ?? 0,
+              lineTotalInKurus: (item.priceInKurus ?? 0) * qty,
+            },
+          ],
+        });
+      }
       await loadSnapshot();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ürün eklenemedi.");
@@ -356,9 +455,36 @@ export function AdminTablesPanel({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || "Kalem eklenemedi.");
+      const addedName = customItemName.trim();
       setCustomItemName("");
       setCustomItemPrice("");
       setAddQty("1");
+      if (hwSettings?.autoPrintKitchenOnOrder && bridgeConnected && hwSettings.kitchenPrinterName) {
+        void sendLocalBridgeReceiptPrint({
+          target: "kitchen",
+          printerName: hwSettings.kitchenPrinterName,
+          paperWidthMm: hwSettings.paperWidthMm,
+          tableZone: selectedTable.zone,
+          tableName: selectedTable.name,
+          openedAt: selectedTable.activeSession?.openedAt ?? new Date().toISOString(),
+          closedAt: null,
+          guestCount: selectedTable.activeSession?.guestCount ?? 2,
+          customerName: selectedTable.activeSession?.customerName ?? null,
+          note: selectedTable.activeSession?.note ?? null,
+          paymentMethod: null,
+          subtotalInKurus: priceKurus * qty,
+          discountInKurus: 0,
+          totalInKurus: priceKurus * qty,
+          items: [
+            {
+              productName: addedName,
+              quantity: qty,
+              unitPriceInKurus: priceKurus,
+              lineTotalInKurus: priceKurus * qty,
+            },
+          ],
+        });
+      }
       await loadSnapshot();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kalem eklenemedi.");
@@ -736,6 +862,16 @@ export function AdminTablesPanel({
               Müşteri Ekranı
             </button>
           )}
+          {!staffMode && onOpenHardware && (
+            <button
+              type="button"
+              className={`admin-pos-hw-btn ${bridgeConnected ? "is-connected" : ""}`}
+              onClick={onOpenHardware}
+              title="Ekran ve yazıcı ayarları"
+            >
+              <i aria-hidden="true" /> Donanım / Yazıcılar
+            </button>
+          )}
           {!staffMode && (
             <button type="button" onClick={() => setShowAddTable((v) => !v)}>
               {showAddTable ? "Vazgeç" : "+ Masa Ekle"}
@@ -1042,27 +1178,55 @@ export function AdminTablesPanel({
                   <div className="admin-pos-bill">
                     <div className="admin-pos-bill-head">
                       <h4>Adisyon ({activeSession.items.length} kalem)</h4>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openReceiptPreview({
-                            tableName: selectedTable.name,
-                            tableZone: selectedTable.zone,
-                            openedAt: activeSession.openedAt,
-                            closedAt: null,
-                            guestCount: activeSession.guestCount,
-                            customerName: activeSession.customerName,
-                            note: sessionNoteDraft.trim() || null,
-                            items: activeSession.items,
-                            subtotalInKurus: posSubtotal,
-                            discountInKurus: discountKurus,
-                            totalInKurus: payableKurus,
-                            paymentMethod: null,
-                          })
-                        }
-                      >
-                        Fiş Önizle / Yazdır <UiIcon name="arrow-up-right" />
-                      </button>
+                      <div className="admin-pos-bill-head-actions">
+                        {activeSession.items.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void printReceiptSmart(
+                                {
+                                  tableName: selectedTable.name,
+                                  tableZone: selectedTable.zone,
+                                  openedAt: activeSession.openedAt,
+                                  closedAt: null,
+                                  guestCount: activeSession.guestCount,
+                                  customerName: activeSession.customerName,
+                                  note: sessionNoteDraft.trim() || null,
+                                  items: activeSession.items,
+                                  subtotalInKurus: posSubtotal,
+                                  discountInKurus: discountKurus,
+                                  totalInKurus: payableKurus,
+                                  paymentMethod: null,
+                                },
+                                "kitchen",
+                              )
+                            }
+                          >
+                            Mutfak Fişi
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openReceiptPreview({
+                              tableName: selectedTable.name,
+                              tableZone: selectedTable.zone,
+                              openedAt: activeSession.openedAt,
+                              closedAt: null,
+                              guestCount: activeSession.guestCount,
+                              customerName: activeSession.customerName,
+                              note: sessionNoteDraft.trim() || null,
+                              items: activeSession.items,
+                              subtotalInKurus: posSubtotal,
+                              discountInKurus: discountKurus,
+                              totalInKurus: payableKurus,
+                              paymentMethod: null,
+                            })
+                          }
+                        >
+                          Fiş Önizle / Yazdır <UiIcon name="arrow-up-right" />
+                        </button>
+                      </div>
                     </div>
 
                     {activeSession.items.length === 0 ? (
@@ -1455,8 +1619,18 @@ export function AdminTablesPanel({
               </div>
             </div>
             <div className="admin-pos-receipt-actions">
-              <button type="button" className="admin-pos-primary-btn" onClick={() => window.print()}>
-                Yazdır (80mm / PDF)
+              <button
+                type="button"
+                className="admin-pos-primary-btn"
+                onClick={() => {
+                  if (previewReceipt) {
+                    void printReceiptSmart(previewReceipt, "cashier");
+                  } else {
+                    window.print();
+                  }
+                }}
+              >
+                Yazdır (Kasa / 80mm)
               </button>
               <button type="button" className="admin-pos-secondary-btn" onClick={closeReceiptPreview}>
                 Kapat

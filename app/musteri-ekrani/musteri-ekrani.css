@@ -145,6 +145,12 @@ html[data-theme="dark"] .cd-idle-logo {
   cursor: pointer;
 }
 
+@media (display-mode: fullscreen) {
+  .cd-fs-btn {
+    display: none;
+  }
+}
+
 .cd-eyebrow {
   display: block;
   font-size: 10px;

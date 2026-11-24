@@ -1,0 +1,17 @@
+{
+  "baseUrl": "https://bonjcakestory.com",
+  "adminPath": "/admin?view=tables",
+  "customerPath": "/musteri-ekrani",
+  "profileDir": "C:\\BonjPOS\\ChromeProfile",
+  "cashierScreenIndex": 0,
+  "customerScreenIndex": 1,
+  "cashierPrinterName": "",
+  "kitchenPrinterName": "",
+  "paperWidthMm": 80,
+  "swapScreens": false,
+  "kioskPrinting": false,
+  "bridgePort": 4895,
+  "startupDelaySeconds": 4,
+  "waitForNetworkSeconds": 30,
+  "waitForSecondScreenSeconds": 10
+}

@@ -9,7 +9,10 @@ import type { AdminOrder, AdminOrderPage } from "@/lib/admin-orders";
 import type { AdminCateringPage, AdminCateringRequest } from "@/lib/admin-catering";
 import type { AdminNotificationSettings } from "@/lib/admin-notification-settings";
 import type { AdminUser } from "@/lib/admin-users";
+import type { PosHardwareSettingsDTO } from "@/lib/pos-hardware";
+import { sendLocalBridgeReceiptPrint } from "@/lib/pos-hardware-client";
 import { AdminNotificationSettingsPanel } from "./AdminNotificationSettingsPanel";
+import { AdminHardwarePanel } from "./AdminHardwarePanel";
 import { AdminUsersPanel } from "./AdminUsersPanel";
 import { AdminAnalyticsPanel } from "./AdminAnalyticsPanel";
 import { AdminApiDocsPanel } from "./AdminApiDocsPanel";
@@ -56,7 +59,7 @@ type CategoryForm = {
 type MessageStatus = "all" | "new" | "read" | "resolved";
 type OrderStatus = "all" | "new" | "accepted" | "preparing" | "ready" | "completed" | "cancelled" | "refunded";
 type CateringStatus = "all" | "new" | "contacted" | "quoted" | "confirmed" | "completed" | "declined";
-export type AdminView = "analytics" | "products" | "categories" | "tables" | "orders" | "messages" | "catering" | "users" | "staff" | "notifications" | "api-docs";
+export type AdminView = "analytics" | "products" | "categories" | "tables" | "orders" | "messages" | "catering" | "users" | "staff" | "notifications" | "hardware" | "api-docs";
 
 type LiveToastItem = {
   key: string;
@@ -467,6 +470,7 @@ export function AdminDashboard({
   initialProductPage,
   categories: initialCategories,
   initialNotificationSettings,
+  initialHardwareSettings,
   dailySummaryCronUrl,
   apiBaseUrl,
   initialUsers,
@@ -481,6 +485,7 @@ export function AdminDashboard({
   initialProductPage: AdminProductPage;
   categories: AdminCategory[];
   initialNotificationSettings: AdminNotificationSettings;
+  initialHardwareSettings: PosHardwareSettingsDTO;
   dailySummaryCronUrl: string;
   apiBaseUrl: string;
   initialUsers: AdminUser[];
@@ -1263,9 +1268,10 @@ export function AdminDashboard({
           <button className={activeView === "users" ? "is-current" : ""} type="button" onClick={() => changeAdminView("users")}><i>08</i><span>Kullanıcılar</span></button>
           <button className={activeView === "staff" ? "is-current" : ""} type="button" onClick={() => changeAdminView("staff")}><i>09</i><span>Garson &amp; Komi</span></button>
           <button className={activeView === "notifications" ? "is-current" : ""} type="button" onClick={() => changeAdminView("notifications")}><i>10</i><span>Bildirim Ayarları</span></button>
-          <button type="button" onClick={() => setQrOpen(true)}><i>11</i><span>QR Menü</span></button>
-          <a href="/menu" target="_blank"><i>12</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
-          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>13</i><span>API Dokümantasyonu</span></button>
+          <button className={activeView === "hardware" ? "is-current" : ""} type="button" onClick={() => changeAdminView("hardware")}><i>11</i><span>Donanım &amp; Yazıcılar</span></button>
+          <button type="button" onClick={() => setQrOpen(true)}><i>12</i><span>QR Menü</span></button>
+          <a href="/menu" target="_blank"><i>13</i><span>Canlı menü <UiIcon name="arrow-up-right" /></span></a>
+          <button className={activeView === "api-docs" ? "is-current" : ""} type="button" onClick={() => changeAdminView("api-docs")}><i>14</i><span>API Dokümantasyonu</span></button>
         </nav>
         <div className="admin-sound-bar">
           <button
@@ -1638,6 +1644,8 @@ export function AdminDashboard({
         <AdminStaffPanel />
       ) : activeView === "notifications" ? (
         <AdminNotificationSettingsPanel initialSettings={initialNotificationSettings} cronEndpointUrl={dailySummaryCronUrl} />
+      ) : activeView === "hardware" ? (
+        <AdminHardwarePanel initialSettings={initialHardwareSettings} />
       ) : activeView === "api-docs" ? (
         <AdminApiDocsPanel baseUrl={apiBaseUrl} />
       ) : activeView === "tables" ? (
@@ -1657,6 +1665,7 @@ export function AdminDashboard({
           </header>
           <AdminTablesPanel
             onNavigateToOrders={() => changeAdminView("orders")}
+            onOpenHardware={() => changeAdminView("hardware")}
             onPrintReceiptChange={setPosPrintReceipt}
             focusTableId={focusTableId}
             onFocusTableHandled={() => setFocusTableId(null)}
@@ -1955,7 +1964,72 @@ export function AdminDashboard({
                 ))}
               </div>
               <div className="admin-order-detail-actions">
-                <button type="button" onClick={() => window.print()}>Yazdır <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span></button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const orderItemsMapped = selectedOrder.items.map((item) => ({
+                      productName: item.productName,
+                      quantity: item.quantity,
+                      unitPriceInKurus: item.unitPriceInKurus,
+                      lineTotalInKurus: item.lineTotalInKurus,
+                    }));
+                    const printed = await sendLocalBridgeReceiptPrint({
+                      target: "kitchen",
+                      paperWidthMm: initialHardwareSettings.paperWidthMm,
+                      tableZone: selectedOrder.fulfillmentType === "table" ? "QR Masa" : "Online / Gel-Al",
+                      tableName: selectedOrder.tableNumber
+                        ? `Masa ${selectedOrder.tableNumber}`
+                        : `#${selectedOrder.orderNumber}`,
+                      openedAt: selectedOrder.createdAt,
+                      closedAt: null,
+                      guestCount: 1,
+                      customerName: selectedOrder.customerName,
+                      note: selectedOrder.note || null,
+                      paymentMethod: selectedOrder.paymentStatus,
+                      subtotalInKurus: selectedOrder.totalInKurus,
+                      discountInKurus: 0,
+                      totalInKurus: selectedOrder.totalInKurus,
+                      items: orderItemsMapped,
+                    });
+                    if (!printed.ok) {
+                      window.alert(printed.error || "Mutfak yazıcısına gönderilemedi.");
+                    }
+                  }}
+                >
+                  Mutfak Fişi
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const orderItemsMapped = selectedOrder.items.map((item) => ({
+                      productName: item.productName,
+                      quantity: item.quantity,
+                      unitPriceInKurus: item.unitPriceInKurus,
+                      lineTotalInKurus: item.lineTotalInKurus,
+                    }));
+                    const printed = await sendLocalBridgeReceiptPrint({
+                      target: "cashier",
+                      paperWidthMm: initialHardwareSettings.paperWidthMm,
+                      tableZone: selectedOrder.fulfillmentType === "table" ? "QR Masa" : "Online / Gel-Al",
+                      tableName: selectedOrder.tableNumber
+                        ? `Masa ${selectedOrder.tableNumber}`
+                        : `#${selectedOrder.orderNumber}`,
+                      openedAt: selectedOrder.createdAt,
+                      closedAt: null,
+                      guestCount: 1,
+                      customerName: selectedOrder.customerName,
+                      note: selectedOrder.note || null,
+                      paymentMethod: selectedOrder.paymentStatus,
+                      subtotalInKurus: selectedOrder.totalInKurus,
+                      discountInKurus: 0,
+                      totalInKurus: selectedOrder.totalInKurus,
+                      items: orderItemsMapped,
+                    });
+                    if (!printed.ok) window.print();
+                  }}
+                >
+                  Yazdır <span aria-hidden="true"><UiIcon name="arrow-up-right" /></span>
+                </button>
                 <a href={`tel:${selectedOrder.phone}`}>Ara <span><UiIcon name="arrow-up-right" /></span></a>
                 <button type="button" className="is-danger" onClick={() => handleDeleteOrder(selectedOrder)}>Sil <span aria-hidden="true"><UiIcon name="close" /></span></button>
               </div>
