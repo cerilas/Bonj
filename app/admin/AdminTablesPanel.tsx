@@ -810,41 +810,43 @@ export function AdminTablesPanel({
                   onClick={() => setSelectedTableId(table.id)}
                   className={`admin-pos-table-card ${isOpen ? "is-open" : "is-free"} ${hasQr ? "has-qr" : ""} ${isSelected ? "is-selected" : ""}`}
                 >
-                  <div className="admin-pos-table-head">
-                    <span className="admin-pos-table-zone">{table.zone}</span>
-                    <span className="admin-pos-table-badge">
-                      {isOpen ? "Açık" : hasQr ? "QR" : "Boş"}
-                    </span>
-                  </div>
-                  <strong className="admin-pos-table-name" title={table.name}>{table.name}</strong>
-                  <div className="admin-pos-table-meta">
-                    {table.activeSession ? (
-                      <>
-                        <span className="admin-pos-timer">
-                          ⏱ {formatCompactDuration(table.activeSession.openedAt, nowMs)}
-                        </span>
-                        <span className="admin-pos-guests">
-                          {table.activeSession.guestCount} kişi
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="admin-pos-guests">{table.capacity} kişilik</span>
-                        <span className="admin-pos-status-hint">
-                          {hasQr ? `${table.onlineOrders.length} QR` : "Hazır"}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="admin-pos-table-total">
-                    {isOpen || hasQr ? (
-                      <>
-                        <strong>{money(totalKurus)}</strong>
-                        {hasQr && <small>QR ({table.onlineOrders.length})</small>}
-                      </>
-                    ) : (
-                      <span className="admin-pos-table-idle">Sipariş yok</span>
-                    )}
+                  <div className="admin-pos-table-card-inner">
+                    <div className="admin-pos-table-head">
+                      <span className="admin-pos-table-zone">{table.zone}</span>
+                      <span className="admin-pos-table-badge">
+                        {isOpen ? "Açık" : hasQr ? "QR" : "Boş"}
+                      </span>
+                    </div>
+                    <strong className="admin-pos-table-name" title={table.name}>{table.name}</strong>
+                    <div className="admin-pos-table-meta">
+                      {table.activeSession ? (
+                        <>
+                          <span className="admin-pos-timer">
+                            ⏱ {formatCompactDuration(table.activeSession.openedAt, nowMs)}
+                          </span>
+                          <span className="admin-pos-guests">
+                            {table.activeSession.guestCount} kişi
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="admin-pos-guests">{table.capacity} kişilik</span>
+                          <span className="admin-pos-status-hint">
+                            {hasQr ? `${table.onlineOrders.length} QR` : "Hazır"}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="admin-pos-table-total">
+                      {isOpen || hasQr ? (
+                        <>
+                          <strong>{money(totalKurus)}</strong>
+                          {hasQr && <small>QR ({table.onlineOrders.length})</small>}
+                        </>
+                      ) : (
+                        <span className="admin-pos-table-idle">Sipariş yok</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
