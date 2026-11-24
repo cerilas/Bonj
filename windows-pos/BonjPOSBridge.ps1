@@ -278,7 +278,221 @@ function Get-PrintersList {
         }
     }
 
+    # Append configured LAN / Ethernet ESC/POS printers (direct TCP port 9100)
+    $netList = Get-NetworkPrintersConfig
+    foreach ($np in $netList) {
+        $npHost = [string]$np.host
+        $npPort = if ($np.port) { [int]$np.port } else { 9100 }
+        $npName = [string]$np.name
+        if (-not $npHost -or -not $npName) { continue }
+        $reachable = Test-TcpPort -HostAddress $npHost -Port $npPort -TimeoutMs 450
+        $result += [PSCustomObject]@{
+            name = $npName
+            isDefault = $false
+            portName = "TCP ${npHost}:${npPort}"
+            driverName = "ESC/POS Ethernet"
+            isOnline = [bool]$reachable
+            statusText = if ($reachable) { "Bagli / Hazir (LAN)" } else { "Agda Ulasilamiyor" }
+            isThermalLikely = $true
+        }
+    }
+
     return ,$result
+}
+
+function Test-TcpPort {
+    param(
+        [string]$HostAddress,
+        [int]$Port = 9100,
+        [int]$TimeoutMs = 900
+    )
+    if (-not $HostAddress) { return $false }
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $ar = $client.BeginConnect($HostAddress, $Port, $null, $null)
+        if (-not $ar.AsyncWaitHandle.WaitOne($TimeoutMs, $false)) {
+            return $false
+        }
+        $client.EndConnect($ar)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        if ($client) {
+            try { $client.Close() } catch {}
+        }
+    }
+}
+
+function Get-NetworkPrintersConfig {
+    $cfg = Get-ConfigObject
+    if ($null -eq $cfg.networkPrinters) { return @() }
+    return @($cfg.networkPrinters)
+}
+
+function Resolve-NetworkPrinter {
+    param([string]$PrinterName)
+    if (-not $PrinterName) { return $null }
+    foreach ($np in (Get-NetworkPrintersConfig)) {
+        if ([string]$np.name -eq $PrinterName) {
+            return $np
+        }
+    }
+    if ($PrinterName -match "^LAN:([0-9\.]+)(?::([0-9]+))?$") {
+        $pPort = if ($Matches[2]) { [int]$Matches[2] } else { 9100 }
+        return [PSCustomObject]@{
+            name = $PrinterName
+            host = $Matches[1]
+            port = $pPort
+        }
+    }
+    return $null
+}
+
+function ConvertTo-EscPosBytes {
+    param([string]$Text)
+    if (-not $Text) { return [byte[]]@() }
+    $clean = $Text.Replace([string][char]0x20BA, " TL").Replace([string][char]0x2014, "-").Replace([string][char]0x2013, "-").Replace([string][char]0x00B7, "-")
+    $bytes = New-Object 'System.Collections.Generic.List[byte]'
+    foreach ($ch in $clean.ToCharArray()) {
+        $code = [int]$ch
+        switch ($code) {
+            0x00C7 { $bytes.Add(0x80) }
+            0x00FC { $bytes.Add(0x81) }
+            0x00E7 { $bytes.Add(0x87) }
+            0x0131 { $bytes.Add(0x8D) }
+            0x00F6 { $bytes.Add(0x94) }
+            0x0130 { $bytes.Add(0x98) }
+            0x00D6 { $bytes.Add(0x99) }
+            0x00DC { $bytes.Add(0x9A) }
+            0x015E { $bytes.Add(0x9E) }
+            0x015F { $bytes.Add(0x9F) }
+            0x011E { $bytes.Add(0xA6) }
+            0x011F { $bytes.Add(0xA7) }
+            default {
+                if ($code -ge 32 -and $code -le 126) {
+                    $bytes.Add([byte]$code)
+                } elseif ($code -eq 10 -or $code -eq 13 -or $code -eq 9) {
+                    $bytes.Add([byte]$code)
+                } else {
+                    $bytes.Add(0x3F)
+                }
+            }
+        }
+    }
+    return $bytes.ToArray()
+}
+
+function Convert-LogoToEscPosRaster {
+    param(
+        [string]$LogoPath,
+        [int]$PaperWidthMm = 80
+    )
+    if (-not (Test-Path $LogoPath)) { return [byte[]]@() }
+    $src = $null
+    $bmp = $null
+    try {
+        $src = [System.Drawing.Bitmap]::FromFile($LogoPath)
+        $maxDots = if ($PaperWidthMm -eq 58) { 216 } else { 288 }
+        $targetW = [Math]::Min($maxDots, $src.Width)
+        $targetW = [Math]::Max(64, ($targetW - ($targetW % 8)))
+        $targetH = [Math]::Max(16, [int][Math]::Round($targetW * ($src.Height / [double]$src.Width)))
+        $bmp = New-Object System.Drawing.Bitmap($targetW, $targetH)
+        $g = [System.Drawing.Graphics]::FromImage($bmp)
+        $g.Clear([System.Drawing.Color]::White)
+        $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $g.DrawImage($src, 0, 0, $targetW, $targetH)
+        $g.Dispose()
+
+        $widthBytes = [int]($targetW / 8)
+        $xL = [byte]($widthBytes -band 0xFF)
+        $xH = [byte](($widthBytes -shr 8) -band 0xFF)
+        $yL = [byte]($targetH -band 0xFF)
+        $yH = [byte](($targetH -shr 8) -band 0xFF)
+
+        $out = New-Object 'System.Collections.Generic.List[byte]'
+        $out.AddRange([byte[]]@(0x1D, 0x76, 0x30, 0x00, $xL, $xH, $yL, $yH))
+        for ($y = 0; $y -lt $targetH; $y++) {
+            for ($xb = 0; $xb -lt $widthBytes; $xb++) {
+                [byte]$b = 0
+                for ($bit = 0; $bit -lt 8; $bit++) {
+                    $px = ($xb * 8) + $bit
+                    $c = $bmp.GetPixel($px, $y)
+                    $lum = (0.299 * $c.R) + (0.587 * $c.G) + (0.114 * $c.B)
+                    if ($lum -lt 175) {
+                        $b = [byte]($b -bor (1 -shl (7 - $bit)))
+                    }
+                }
+                $out.Add($b)
+            }
+        }
+        return $out.ToArray()
+    } catch {
+        return [byte[]]@()
+    } finally {
+        if ($bmp) { $bmp.Dispose() }
+        if ($src) { $src.Dispose() }
+    }
+}
+
+function Invoke-EscPosTcpPrint {
+    param(
+        [string]$HostAddress,
+        [int]$Port = 9100,
+        [int]$PaperWidthMm = 80,
+        [string[]]$Lines,
+        [string]$TitleLine
+    )
+
+    $buf = New-Object 'System.Collections.Generic.List[byte]'
+    # ESC @ init + ESC t 18 (PC857 Turkish)
+    $buf.AddRange([byte[]]@(0x1B, 0x40, 0x1B, 0x74, 0x12))
+
+    $logoFile = Join-Path $scriptDir "bonj-logo.png"
+    $raster = Convert-LogoToEscPosRaster -LogoPath $logoFile -PaperWidthMm $PaperWidthMm
+    if ($raster.Length -gt 0) {
+        $buf.AddRange([byte[]]@(0x1B, 0x61, 0x01)) # Center
+        $buf.AddRange($raster)
+        $buf.Add(0x0A)
+        $buf.AddRange([byte[]]@(0x1B, 0x61, 0x00)) # Left
+    } elseif ($TitleLine) {
+        $buf.AddRange([byte[]]@(0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01))
+        $buf.AddRange((ConvertTo-EscPosBytes -Text $TitleLine))
+        $buf.AddRange([byte[]]@(0x0A, 0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00))
+    }
+
+    foreach ($line in $Lines) {
+        if ($line -like "BOLD:*") {
+            $txt = $line.Substring(5)
+            $buf.AddRange([byte[]]@(0x1B, 0x45, 0x01))
+            $buf.AddRange((ConvertTo-EscPosBytes -Text $txt))
+            $buf.AddRange([byte[]]@(0x1B, 0x45, 0x00, 0x0A))
+        } else {
+            $buf.AddRange((ConvertTo-EscPosBytes -Text $line))
+            $buf.Add(0x0A)
+        }
+    }
+
+    # Feed 4 lines cleanly then partial auto-cut
+    $buf.AddRange([byte[]]@(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x03))
+
+    $payload = $buf.ToArray()
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $ar = $client.BeginConnect($HostAddress, $Port, $null, $null)
+        if (-not $ar.AsyncWaitHandle.WaitOne(2500, $false)) {
+            throw "Ag yazicisina baglanilamadi (${HostAddress}:${Port} zaman asimi)."
+        }
+        $client.EndConnect($ar)
+        $stream = $client.GetStream()
+        $stream.WriteTimeout = 4000
+        $stream.Write($payload, 0, $payload.Length)
+        $stream.Flush()
+        Start-Sleep -Milliseconds 120
+    } finally {
+        $client.Close()
+    }
 }
 
 $script:bridgeStartTime = Get-Date
@@ -536,6 +750,13 @@ function Invoke-ThermalPrint {
 
     if (-not $PrinterName) {
         throw "Yazici secilmedi."
+    }
+
+    $netPrinter = Resolve-NetworkPrinter -PrinterName $PrinterName
+    if ($netPrinter) {
+        $npPort = if ($netPrinter.port) { [int]$netPrinter.port } else { 9100 }
+        Invoke-EscPosTcpPrint -HostAddress ([string]$netPrinter.host) -Port $npPort -PaperWidthMm $PaperWidthMm -TitleLine $TitleLine -Lines $Lines
+        return
     }
 
     $logoFile = Join-Path $scriptDir "bonj-logo.png"
@@ -870,6 +1091,56 @@ while ($listener.IsListening) {
             Save-ConfigObject -Config $cfg
             Write-BridgeLog "Config guncellendi."
             Send-JsonResponse -Ctx $ctx -StatusCode 200 -BodyObject @{ ok = $true }
+            continue
+        }
+
+        if ($req.HttpMethod -eq "POST" -and $path -eq "/printers/network") {
+            $npHost = ([string]$bodyObj.host).Trim()
+            if (-not ($npHost -match "^[0-9]{1,3}(\.[0-9]{1,3}){3}$")) {
+                throw "Gecerli bir IPv4 adresi girin (orn: 192.168.123.100)."
+            }
+            $npPort = if ($bodyObj.port) { [int]$bodyObj.port } else { 9100 }
+            $npName = ([string]$bodyObj.name).Trim()
+            if (-not $npName) {
+                $npName = "Ethernet Yazici ($npHost)"
+            }
+            $reachable = Test-TcpPort -HostAddress $npHost -Port $npPort -TimeoutMs 1500
+            if (-not $reachable -and -not [bool]$bodyObj.allowOffline) {
+                throw "Yaziciya ag uzerinden ulasilamadi (${npHost}:${npPort}). PC ile yazici farkli alt agda ise AgYazicisiKur.bat'i calistirin."
+            }
+
+            $cfg = Get-ConfigObject
+            $existingNet = @()
+            if ($null -ne $cfg.networkPrinters) {
+                foreach ($item in @($cfg.networkPrinters)) {
+                    if ([string]$item.host -ne $npHost -and [string]$item.name -ne $npName) {
+                        $existingNet += $item
+                    }
+                }
+            }
+            $newEntry = [PSCustomObject]@{
+                name = $npName
+                host = $npHost
+                port = $npPort
+            }
+            $existingNet += $newEntry
+            if ($cfg.PSObject.Properties["networkPrinters"]) {
+                $cfg.networkPrinters = $existingNet
+            } else {
+                $cfg | Add-Member -NotePropertyName "networkPrinters" -NotePropertyValue $existingNet
+            }
+            if ($bodyObj.assignRole -eq "kitchen") {
+                $cfg.kitchenPrinterName = $npName
+            } elseif ($bodyObj.assignRole -eq "cashier") {
+                $cfg.cashierPrinterName = $npName
+            }
+            Save-ConfigObject -Config $cfg
+            Write-BridgeLog "Ag yazicisi eklendi: $npName (${npHost}:${npPort})"
+            Send-JsonResponse -Ctx $ctx -StatusCode 200 -BodyObject @{
+                ok = $true
+                printer = $newEntry
+                connected = [bool]$reachable
+            }
             continue
         }
 

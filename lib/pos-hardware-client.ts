@@ -140,3 +140,32 @@ export async function sendLocalBridgeReceiptPrint(
     };
   }
 }
+
+export async function addLocalBridgeNetworkPrinter(payload: {
+  name: string;
+  host: string;
+  port?: number;
+  assignRole?: "kitchen" | "cashier";
+}): Promise<{ ok: boolean; error?: string; connected?: boolean; name?: string }> {
+  try {
+    const res = await bridgeRequest<{
+      ok: boolean;
+      connected?: boolean;
+      printer?: { name: string; host: string; port: number };
+    }>("/printers/network", {
+      method: "POST",
+      body: payload,
+      timeoutMs: 5000,
+    });
+    return {
+      ok: true,
+      connected: Boolean(res.connected),
+      name: res.printer?.name ?? payload.name,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Ağ yazıcısı eklenemedi.",
+    };
+  }
+}

@@ -7,6 +7,7 @@ import type {
   SavedPrinterSnapshot,
 } from "@/lib/pos-hardware";
 import {
+  addLocalBridgeNetworkPrinter,
   applyLocalBridgeScreens,
   fetchLocalBridgeHardware,
   LOCAL_POS_BRIDGE_URL,
@@ -42,6 +43,11 @@ export function AdminHardwarePanel({
   const [autoPrintKitchenOnOrder, setAutoPrintKitchenOnOrder] = useState(
     initialSettings.autoPrintKitchenOnOrder,
   );
+  const [lanIp, setLanIp] = useState("192.168.123.100");
+  const [lanPort, setLanPort] = useState("9100");
+  const [lanName, setLanName] = useState("Mutfak Ethernet (192.168.123.100)");
+  const [lanRole, setLanRole] = useState<"kitchen" | "cashier">("kitchen");
+  const [addingLanPrinter, setAddingLanPrinter] = useState(false);
 
   function flashNotice(msg: string) {
     setNotice(msg);
@@ -255,6 +261,34 @@ export function AdminHardwarePanel({
     }
   }
 
+  async function handleAddNetworkPrinter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!lanIp.trim() || addingLanPrinter) return;
+    setAddingLanPrinter(true);
+    setError("");
+    try {
+      const cleanIp = lanIp.trim();
+      const label = lanName.trim() || `${lanRole === "kitchen" ? "Mutfak" : "Kasa"} Ethernet (${cleanIp})`;
+      const res = await addLocalBridgeNetworkPrinter({
+        name: label,
+        host: cleanIp,
+        port: Number(lanPort) || 9100,
+        assignRole: lanRole,
+      });
+      if (!res.ok) {
+        throw new Error(res.error || "Ağ yazıcısına ulaşılamadı.");
+      }
+      if (lanRole === "kitchen") setKitchenPrinterName(res.name || label);
+      else setCashierPrinterName(res.name || label);
+      flashNotice(`"${res.name || label}" eklendi ve atandı. Şimdi "Donanım Ayarlarını Kaydet"e basın.`);
+      await refreshAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ağ yazıcısı eklenemedi.");
+    } finally {
+      setAddingLanPrinter(false);
+    }
+  }
+
   return (
     <section className="admin-main" id="hardware">
       <header className="admin-topbar">
@@ -293,6 +327,13 @@ export function AdminHardwarePanel({
               className="admin-hw-mini-btn"
             >
               Tek Tıkla Kur (.bat) <UiIcon name="arrow-down" />
+            </a>
+            <a
+              href="/downloads/AgYazicisiKur.bat"
+              download="AgYazicisiKur.bat"
+              className="admin-hw-mini-btn"
+            >
+              Ağ Yazıcısı Kur (.bat) <UiIcon name="arrow-down" />
             </a>
             <a
               href="/downloads/BonjPOS-Windows.zip"
@@ -559,6 +600,54 @@ export function AdminHardwarePanel({
               {saving ? "Kaydediliyor…" : "Donanım Ayarlarını Kaydet"}
             </button>
           </div>
+
+          <form className="admin-hw-net-box" onSubmit={(e) => void handleAddNetworkPrinter(e)}>
+            <div className="admin-hw-net-head">
+              <strong>Ethernet / Modem Yazıcısı Bağla (TCP 9100)</strong>
+              <small>
+                Bilgisayarınız farklı alt ağdaysa (örn: PC <code>192.168.1.x</code>, yazıcı{" "}
+                <code>192.168.123.100</code>) önce yukarıdaki <b>Ağ Yazıcısı Kur (.bat)</b> dosyasını
+                kasa PC’de bir kez çalıştırın; IP köprüsü ve test fişini otomatik kurar.
+              </small>
+            </div>
+            <div className="admin-hw-net-fields">
+              <input
+                type="text"
+                placeholder="Yazıcı IP (örn: 192.168.123.100)"
+                value={lanIp}
+                onChange={(e) => setLanIp(e.target.value)}
+                required
+              />
+              <input
+                type="number"
+                min={1}
+                max={65535}
+                placeholder="Port (9100)"
+                value={lanPort}
+                onChange={(e) => setLanPort(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Yazıcı Adı"
+                value={lanName}
+                onChange={(e) => setLanName(e.target.value)}
+              />
+              <select
+                value={lanRole}
+                onChange={(e) => setLanRole(e.target.value === "cashier" ? "cashier" : "kitchen")}
+              >
+                <option value="kitchen">Mutfak Yazıcısı Yap</option>
+                <option value="cashier">Kasa Yazıcısı Yap</option>
+              </select>
+              <button
+                type="submit"
+                className="admin-pos-secondary-btn"
+                disabled={!bridge || addingLanPrinter}
+              >
+                {addingLanPrinter ? "Bağlanıyor…" : "Test Et & Ekle"}
+              </button>
+            </div>
+          </form>
 
           <div className="admin-hw-printers-table-wrap">
             <h3>Algılanan Windows Yazıcıları ({printers.length})</h3>
